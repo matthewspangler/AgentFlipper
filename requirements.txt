@@ -1,0 +1,10 @@
+litellm>=1.0.0
+pyyaml>=6.0
+pyserial>=3.5
+langchain>=0.0.267
+langchain-community>=0.0.13
+sentence-transformers>=2.2.2
+beautifulsoup4>=4.12.2
+requests>=2.31.0
+faiss-cpu>=1.7.4
+# PyFlipper is included as a submodule

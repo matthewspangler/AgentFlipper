@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+venv/
+env/
+
+# Logs and databases
+*.log
+*.sqlite
+logs/
+
+# IDE specific 
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local configuration
+config.yaml
+
+# Built files
+dist/
+build/
+*.egg-info/
+
+# Documentation generated files
+docs/flipper_cli_faiss/
+
+# Virtual environment
+venv/
+
+# Flipper Zero specific
+*.db

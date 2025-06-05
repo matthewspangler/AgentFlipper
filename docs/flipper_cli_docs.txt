@@ -1,0 +1,332 @@
+Home
+
+Shop
+
+Docs
+
+Downloads
+
+Community
+
+⌘
+
+K
+
+Flipper Zero Documentation
+
+Basics
+
+🐬
+
+First start
+
+MicroSD card setup
+
+Firmware update
+
+Desktop
+
+Pet dolphin
+
+Power
+
+Reboot
+
+Controls
+
+Settings
+
+Sub-GHz
+
+Reading signals
+
+Reading RAW signals
+
+Adding new remotes
+
+Supported Sub-GHz vendors
+
+Frequencies
+
+125 kHz RFID
+
+Reading 125 kHz RFID cards
+
+Adding 125 kHz cards manually
+
+Writing data to T5577 cards
+
+Animal microchips
+
+NFC
+
+Reading NFC cards
+
+Recovering MIFARE Classic keys
+
+Unlocking cards with passwords
+
+Writing data to magic cards
+
+Adding new NFC cards
+
+Infrared
+
+Reading infrared signals
+
+Using universal remotes
+
+Remotes in Flipper Mobile App
+
+GPIO & modules
+
+iButton
+
+Reading iButton keys
+
+Adding iButton keys manually
+
+Writing data to iButton keys
+
+Bad USB
+
+U2F (Universal 2nd Factor)
+
+Apps
+
+HID controllers
+
+Troubleshooting apps
+
+Flipper Mobile App
+
+Reporting Mobile App bugs
+
+qFlipper
+
+Troubleshooting drivers on Windows
+
+Development
+
+Developer Docs
+
+Wi-Fi Developer Board
+
+JavaScript on Flipper Zero
+
+Command-line interface
+
+Hardware
+
+Video Game Module
+
+Quick start guide
+
+Firmware update
+
+Сustom firmware
+
+GPIO on Video Game Module
+
+Docs powered by
+
+Archbee
+
+Development
+
+Command-line interface
+
+you can control flipper zero through the command line interface (cli) using your computer the cli is a text based interface that allows you to read and emulate signals, run programs, manage files, and more on your flipper zero by running commands in addition, the cli offers a number of features, such as viewing the flipper zero logs, communicating with other flipper zero users via sub 1 ghz radio, and much more! on this page, you’ll learn how to access the flipper zero cli, view available commands, view logs, and chat with other flipper zero owners via sub 1 ghz radio accessing the flipper zero cli there are three methods to access the flipper zero cli method 1 using flipper lab access the cli via the flipper lab website using google chrome, microsoft edge, or other chromium based browsers that support the web serial api by doing the following quit the qflipper application if running connect your flipper zero to your computer via a usb cable on your computer, run google chrome or another chromium based browser go to lab flipper net https //lab flipper net/ > cli method 2 using the web serial terminal access the cli via the web serial terminal using google chrome, microsoft edge, or other chromium based browsers that support the web serial api by doing the following quit the qflipper application if running connect your flipper zero to your computer via a usb cable on your computer, run google chrome or another chromium based browser go to the web serial terminal set the baud rate to 230400 , then click connect select your flipper zero in the list, then click connect method 3 using a serial terminal different operating systems have different procedures for accessing the flipper zero cli via a serial terminal follow the instructions for your operating system below to access the flipper zero cli on macos via a serial terminal, you need to find the serial port your flipper zero is connected to by doing the following connect your flipper zero to your computer on your computer, open terminal and run the following command ls /dev/cu find the name of the connected flipper zero it should be /dev/cu usbmodemflip name , where name is the unique name of your device once you know the name of the connected flipper zero, you can access the cli either with the screen terminal multiplexer or the minicom communication program screen quit qflipper if running make sure that your flipper zero is connected to the computer in the terminal, run the following command screen /dev/cu usbmodemflip name don’t forget to replace name with the name of your device you found previously to quit the screen , press control+a , then k , then y minicom if you don’t have the minicom program on your computer, you can install it via homebrew install homebrew if you haven’t already by running in the terminal the following command /bin/bash c "$(curl fssl https //raw\ githubusercontent com/homebrew/install/head/install sh)" after installation, run the following command to install minicom brew install minicom once the minicom program is installed on your computer, you can finally access the cli by doing the following quit qflipper if running make sure that your flipper zero is connected to the computer in the terminal, run the following command minicom d /dev/ cu usbmodemflip name don’t forget to replace name with the name of your device you found previously to quit minicom , press esc+z , then x , then return to access the flipper zero cli on linux via a serial terminal, you need to find the serial port your flipper zero is connected to by doing the following connect your flipper zero to your computer on your computer, open the terminal and run the following command ls /dev/serial/by id/ find the name of the port it should be /dev/serial/by id/usb flipper devices inc flipper \<name> flip \<name> if00 , where name is the unique name of your device once you know the name of the port, you can access the cli either with the screen command or the minicom communication program screen quit qflipper if running make sure that your flipper zero is connected to the computer in the terminal, run the following command screen /dev/serial/by id/usb flipper devices inc flipper \<name> flip \<name> if00 don’t forget to replace name with the name of your device you found previously to quit the screen , press ctrl+a , then k , then y minicom if you don’t have the minicom program on your computer, install it using your distribution package manager once the minicom program is installed on your computer, you can finally access the cli by doing the following quit qflipper if running make sure that your flipper zero is connected to the computer in the terminal, run the following command minicom d /dev/serial/by id/usb flipper devices inc flipper \<name> flip \<name> if00 don’t forget to replace name with the name of your device you found previously to quit minicom , press ctrl+a , then x , then return if the steps above didn’t work, you may attempt to find the port name using the /dev/tty command if your flipper zero is the only device connected to the serial port, it should appear as /dev/ttyacm0 however, if there are other serial devices connected, you can find the flipper zero serial port name next to the device’s name in the qflipper application after finding the name of the serial port, you can access the cli either with the screen command or the minicom communication program to access the flipper zero cli on windows via a serial terminal, do the following on your computer, install the putty application https //www chiark greenend org uk/ sgtatham/putty/latest html quit qflipper if running connect your flipper zero to your computer via a usb cable go to device manager > ports (com & lpt) look at the com port number of your flipper zero connected if there are several com port numbers, disconnect and connect your flipper zero back to see the added port number run putty in the opened window, in the connection type , select serial in the serial line field, enter the com port number (for example, com3) in the speed field, enter 230400 click the open button to quit putty , close the application window available commands to view the list of available commands in the cli, run the ? or help command you can interact with the flipper zero cli through the following commands command description ! alias for the info device command ? alias for the help command bt radio core (ble) test app intended for factory tests it can be used to check the ble hci version learn more https //docs flipper net/development/cli/#mmgka crypto crypto tool used for enclave key provisioning and data encryption/decryption learn more https //docs flipper net/development/cli/#plfz date displays/sets the current date and time device info alias for the info device command (obsolete) factory reset resets your device to the factory settings data on the microsd card will be saved free displays heap memory allocator information it can be used for general application memory use profiling free blocks displays heap memory allocator free blocks and their respective size it can be used to estimate heap fragmentation gpio allows to directly control gpio pins set mode, read/write state learn more https //docs flipper net/development/cli/#aqa4b help displays the list of available commands i2c i2c bus scan tool can be used to search for a device on the bus ikey reads, emulates, and writes ibutton keys learn more https //docs flipper net/development/cli/#plqrz info displays detailed information about the device and power system learn more https //docs flipper net/development/cli/#ezoyq input input subsystem command line tool displays input and allows to inject input events into learn more https //docs flipper net/development/cli/#z95zz ir reads and sends infrared signals learn more https //docs flipper net/development/cli/#fejwz js runs a javascript file and sends console output to the cli learn more https //docs flipper net/development/cli#gjmyy led notification service test app allows to directly control leds and lcd backlight learn more https //docs flipper net/development/cli/#xqqai loader application / script loader can enumerate compiled in apps, can open internal or external (fap) app learn more https //docs flipper net/development/cli/#wvlxi log system log viewer allows to see device or app logs learn more https //docs flipper net/development/cli/# yz2e nfc nfc factory test app controls field when the device is in debug mode onewire 1 wire bus scan app it works on the same pins as ibutton, but only scans for 1 wire devices learn more https //docs flipper net/development/cli/#mxwpv power turns off and reboots the device, as well as enables the power supply to gpio pins learn more https //docs flipper net/development/cli/#oj449 rfid reads and emulates data from low frequency rfid cards learn more https //docs flipper net/development/cli/#mieur start rpc session activates the remote procedure call (rpc) session switches the cli into protobuf mode normally, you don’t need to do that storage provides commands for interaction with the file system of the device learn more https //docs flipper net/development/cli/#xgais subghz sub ghz test app mostly used for factory testing, but also contains various supplementary tools learn more https //docs flipper net/development/cli/#wlvht sysctl system control configures various system settings learn more https //docs flipper net/development/cli/#gx6kf top lists running threads and information about them in real time similar to the top command on linux press ctrl+c to quit update firmware updater command line tool updates and backs up the device , and restores the internal storage learn more https //docs flipper net/development/cli/#nhtut uptime displays the time since the last reboot of the device vibro activates and deactivates the vibration motor learn more https //docs flipper net/development/cli/#4ett4 echo sends received bytes as is used by cli perf for performance testing stops on session close or ctrl+c (0x03) neofetch displays system info, similar to neofetch on linux/ nix systems reload ext cmds reloads the list of available commands to reflect any changes made to external commands on the sd card (added, removed, or updated) exit exits the cli shell especially useful in secondary shells reading flipper zero logs via the cli you can read flipper zero logs via the cli by doing the following connect your flipper zero to your computer via a usb c cable access the flipper zero cli https //docs flipper net/development/cli/#hfxty set the log level you need (the log info level is set by default) and start logging to do that, run one of the following commands log logs non critical information, including warn logs log error logs only critical errors and other important messages log warn logs non critical errors and warnings, including error logs log info logs non critical information, including warn logs log default the default system log level (equivalent to info logs ) log debug logs debug information, including info logs (will impact system performance) log trace logs system traces, including debug logs (will impact system performance) you can access this list in the cli by running the log ? command interact with your flipper zero to view the logs to stop the logging process, press ctrl+c chatting with other flipper zero users in the cli, you can chat with other flipper zero users via the sub 1 ghz radio to do that, all devices have to communicate at the same frequency to chat, all participants have to do the following connect your flipper zero to your computer via a usb c cable access the flipper zero cli https //docs flipper net/development/cli/#hfxty run the command that specifies the frequency and antenna type subghz chat \<frequency in hz> \<device 0/1> where \<frequency in hz> must be in the 299999755 348000000, 386999938 464000000, 778999847 928000000 hz range some frequencies might be unavailable in your region learn more \<device 0/1> must specify if the internal antenna (0) or external antenna (1) is used for communication if connected for example subghz chat 868150000 0 enter your message and press return to quit the chat, press ctrl+c learning more about the cli commands bt \<cmd> comment bt hci info displays bluetooth host controller interface (hci) information crypto this command allows you to encrypt and decrypt plain text with the help of the cryptographic keys in the secure enclave and initialization vector \<cmd> \<arg> comment crypto encrypt \<key slot\ int> \<iv\ hex> encrypts plain text with aes256cbc and encodes to hex using a key from the secure enclave and initialization vector crypto decrypt \<key slot\ int>\<iv\ hex> decrypts encoded with aes256cbc data hex text into plain text using the key from the secure enclave and initialization vector crypto has key \<key slot\ int> checks if the secure enclave has a key in the specific slot slots range from 1 to 100 crypto store key \<key slot\ int> \<key type\ str> \<key size\ int> \<key data\ hex> non reversible operation! adds a key to the secure enclave the added key can’t be removed where \<key slot\ int> secure enclave slot number that contains a cryptographic key by default, slots 1 through 11 have cryptographic keys used for encryption \<iv\ hex> a 16 byte initialization vector in hexadecimal generated by the user \<key type\ str> master, simple, or encrypted \<key size\ int> 128 or 256 bites \<key data\ hex> the key data in hexadecimal gpio \<cmd> \<arg> comment gpio mode \<pin name> <0/1> sets the entered gpio pin to input (0) or output (1) mode gpio set \<pin name> <0/1> sets the gpio pin’s value gpio read \<pin name> reads the gpio pin’s value where \<pin name> pa7, pa6, pa4, pb3, pb2, pc3, pc1, pc0 ikey \<cmd> \<args> comment ikey read reads ibutton keys ikey emulate \<key type> \<key data> emulates the entered data ikey write dallas \<key data> writes 8 byte hex formatted data to dallas ibutton keys where \<key type> and \<key data> dallas, 8 bytes long cyfral, 2 bytes long metakom, 4 bytes long info \<args> commands info device displays information about the device info power displays information about the power system info power debug displays detailed information about the power system input \<cmd> \<args> comments input dump displays the pressed buttons input send \<key> \<type> emulates a press of a button where \<key> up, down, left, right, back, ok \<type> press, release, short, long to emulate a short press of a button, run the following commands in order input send \<key> press input send \<key> short input send \<key> release to emulate a long press of a button, run the following commands in order input send \<key> press input send \<key> long input send \<key> release otherwise, the input will be discarded ir \<cmd> \<args> comment ir rx reads and decodes data from ir (infrared) remote controls ir rx raw reads data from ir remote controls in raw format ir tx \<protocol> \<address> \<command> sends the entered ir command ir tx raw f \<frequency> dc \<duty cycle> \<samples> sends raw ir data up to 512 samples of data ir decode \<input file> \<output file> decodes the file with raw data ir universal list \<remote name> displays the list of commands of the entered remote ir universal \<remote name> \<signal name> sends the command from the entered remote where \<protocol> nec, necext, nec42, nec42ext, samsung32, rc6, rc5, rc5x, sirc, sirc15, sirc20, kaseikyo, rca \<address> and \<command> must be in hex format \<frequency> 10000 56000 \<duty cycle> 0 100 \<remote name> tv, audio, ac, projector js \<args> comment js \<path> runs the selected javascript file and sends console output to the cli led \<args> comment led \<r/g/b> <0 255> sets the led’s color each color value must be entered separately led \<bl> <0 255> enables the display’s backlight to be always on where <0 255> is the light value loader \<cmd> \<args> comment loader list lists available applications loader open \<application name\ string> runs the entered application loader info displays the loader’s state loader close closes the running application loader signal \<signal\ number> \<arg\ hex> sends a signal with an optional argument log \<level> comment log starts logging with the current log level log error logs only critical errors and other important messages log warn logs non critical errors and warnings, including error logs log info logs non critical information, including warn logs log default the default system log level (equivalent to info logs ) log debug logs debug information, including info logs (will impact system performance) log trace logs system traces, including debug logs (will impact system performance) nfc by default, there are no commands available to enable the nfc command, you need to enable debug mode on your flipper zero by running the sysctl debug 1 command in the cli \<cmd> comment nfc field enables the high frequency nfc field onewire \<cmd> comment onewire search searches for 1 wire devices power \<cmd> \<arg> comment power off powers off the device power reboot reboots the device power reboot2dfu reboots the device to dfu mode power 5v <1/0> enables (1) or disables (0) 5 v power supply to gpio pin 1 power 3v3 <1/0> enables (1) or disables (0) 3 3 v power supply to gpio pin 9 available in debug mode rfid \<cmd> \<arg> comment rfid read reads rfid card’s data in ask and psk modes rfid write \<key type>\<key data> writes the entered data rfid emulate \<key type>\<key data> emulates the entered data rfid raw read \<ask/psk>\<filename> reads and saves card’s data in raw format in a file rfid raw emulate \<filename> emulates the saved raw data from a file useful for debugging protocols rfid raw analyze \<filename> outputs raw data from a file to the cli and tries to decode it useful for protocol development where \<key type> and \<key data> em4100, 5 bytes long em4100/32, 5 bytes long em4100/16, 5 bytes long electra, 8 bytes long h10301, 3 bytes long idteck, 8 bytes long indala26, 4 bytes long ioproxxsf, 4 bytes long awid, 9 bytes long fdx a, 5 bytes long fdx b, 11 bytes long hidprox, 6 bytes long hidext, 12 bytes long pyramid, 4 bytes long viking, 4 bytes long jablotron, 5 bytes long paradox, 6 bytes long pac/stanley, 4 bytes long keri, 4 bytes long gallagher, 8 bytes long nexwatch, 8 bytes long radio key, 6 bytes long storage the path must start with /int or /ext \<cmd> \<path> \<args> comment storage info \</ext> gets general info about the file system storage format \</ext> formats the file system on the microsd card storage list \</ext/path/to/dir> lists files and directories storage tree \</ext/path/to/dir> lists all files and directories storage remove \</ext/path/to/dir> deletes the file or directory the directory must be empty storage read \</ext/path/to/file> reads text from the file and prints the file size and content to the cli storage read chunks \</ext/path/to/file> <1 512> reads data from file in blocks and prints the file size and content to the cli, \<args> should contain how many bytes you want to read in one block storage write \</ext/path/to/file> \<text> reads text from the cli and adds it to a file stops by pressing ctrl+c storage write chunk \</ext/path/to/file> <1 512> reads data from the cli and adds it to the file, \<args> should contain how many bytes you want to write storage copy \</ext/path/to/file> \</ext/path/to/file> copies the file to a new file, \<args> must contain a new path storage rename \</ext/path/to/file> \</ext/path/to/file> renames a file or directory, \<args> must contain a new path storage mkdir \</ext/path/to/directory> creates a new directory storage md5 \</ext/path/to/file> displays the md5 hash of the file storage stat \</ext/path/to/file> displays info about the file or directory storage timestamp \</ext/path/to/file> displays the last modification timestamp storage extract \</ext/path/to/archive> \</ext/path/to/directory> extracts a tar archive file to a directory subghz \<cmd> \<arg> comment subghz chat \<frequency\ in hz> \<device 0/1> enables chatting with other flipper zero users subghz tx <3 byte key in hex> \<frequency in hz> \<te us> \<repeat count> \<device 0/1> transmits a key subghz rx \<frequency\ in hz> \<device 0/1> enables receiving of a signal subghz rx raw \<frequency\ in hz> enables receiving of a signal in raw format subghz decode raw \<file name path raw file> decodes a file with raw data and displays the results subghz tx from file \<file name path file> \<repeat count> \<device 0/1> transmits data from a file the following commands can only be used in debug mode \<cmd> \<arg> comment subghz tx carrier \<frequency\ in hz> transmits carrier frequency subghz rx carrier \<frequency\ in hz> receives carrier frequency subghz encrypt keeloq \<path decrypted file> \<path encrypted file> \<iv 16 bytes in hex> encrypts keeloq manufacture keys subghz encrypt raw \<path decrypted file> \<path encrypted file> \<iv 16 bytes in hex> encrypts raw data where \<frequency\ in hz> is one of the values in the 299999755 348000000, 386999938 464000000, 778999847 928000000 hz range some frequencies might be unavailable in your region learn more \<device 0/1> 0 is the built in sub 1 ghz antenna with the cc1101 transceiver, 1 is the external sub 1 ghz antenna with the cc1101 transceiver \<te us> quantization interval in milliseconds \<iv 16 bytes inhex> a 16 byte initialization vector in hexadecimal generated by the user sysctl \<cmd> \<arg> comment sysctl debug <0/1> enables (1) or disables (0) system debug sysctl heap track \<none/main> enables (main) or disables (none) heap allocation tracking mode update \<cmd> \<arg> comment update install \</ext/path/to/update fuf> verifies and installs an update package update backup \</ext/path/to/backup tar> creates an internal storage backup update restore \</ext/path/to/backup tar> restores from an internal storage backup vibro \<arg> comment vibro <1/0> activates (1) or deactivates (0) the vibration motor
+
+🤔
+
+Have a question?
+
+Our knowledgeable support team and an awesome community will get you an answer in a flash. Please leave your questions in English.
+
+To ask a question or participate in discussions, you'll need to authenticate first.
+
+﻿
+
+Post
+
+Updated
+
+20 May 2025
+
+Did this page help you?
+
+PREVIOUS
+
+Development
+
+NEXT
+
+Hardware
+
+Docs powered by
+
+Archbee
+
+Docs powered by
+
+Archbee
+
+Community
+
+Kickstarter
+
+Habr.com
+
+Discord
+
+Forum
+
+Blog
+
+Resources
+
+Downloads
+
+Documentation
+
+For Developers
+
+GitHub
+
+Lab
+
+Design Guide
+
+Distributors
+
+Lab401
+
+Joom
+
+How to buy
+
+Become a Partner
+
+About
+
+Support
+
+Contacts
+
+Compliance
+
+Company
+
+Abuse Report
+
+Privacy Policy
+
+Copyright ©
+
+2025
+
+Flipper Devices Inc.
+
+
+# Flipper Zero CLI Command Reference
+
+## Core Commands
+
+### info
+Display device information including firmware version, hardware model, and other system details.
+
+### gpio
+Control the GPIO pins on the Flipper Zero.
+- gpio set [pin] [0|1|?] - Set a GPIO pin high (1), low (0), or show state (?)
+- gpio read [pin] - Read the current state of a GPIO pin
+
+### ibutton
+Work with iButton devices.
+- ibutton read - Read an iButton device
+- ibutton write - Write data to an iButton device
+- ibutton emulate - Emulate an iButton device
+
+### irda (ir)
+Work with infrared signals.
+- ir rx - Receive IR signals
+- ir tx - Transmit IR signals
+- ir set [protocol] - Set IR protocol
+
+### lfrfid
+Low frequency RFID operations.
+- lfrfid read - Read RFID card
+- lfrfid write - Write data to RFID card
+- lfrfid emulate - Emulate RFID card
+- lfrfid detect - Detect RFID cards
+
+### nfc
+Work with NFC tags.
+- nfc detect - Detect NFC tags
+- nfc read - Read NFC tag data
+- nfc emulate - Emulate NFC tag
+- nfc save - Save current NFC data
+
+### subghz
+Sub-GHz operations.
+- subghz rx - Receive Sub-GHz signals
+- subghz tx - Transmit Sub-GHz signals
+- subghz read - Read saved Sub-GHz files
+- subghz write - Write Sub-GHz data to file
+
+## System Commands
+
+### led
+Control LEDs.
+- led r [on|off] - Control red LED
+- led g [on|off] - Control green LED
+- led b [on|off] - Control blue LED
+- led bl [on|off] - Control backlight
+
+### vibro
+Control the vibration motor.
+- vibro [0-100] - Set vibration strength (0-100%)
+
+### usb
+USB mode controls.
+- usb start [mode] - Start USB in specific mode
+- usb stop - Stop USB mode
+
+### bt
+Bluetooth operations.
+- bt on - Turn Bluetooth on
+- bt off - Turn Bluetooth off
+- bt scan - Scan for Bluetooth devices
+- bt forget - Forget paired devices
+
+### storage
+File system operations.
+- storage info - Show storage information
+- storage list [path] - List files in a directory
+- storage stat [path] - Show file statistics
+- storage write [path] [data] - Write data to a file
+- storage remove [path] - Remove a file
+- storage md5 [path] - Calculate MD5 hash of a file
+
+### update
+Update firmware-related commands.
+- update [options] - Update firmware
+
+### ps
+Show running processes/applications.
+
+### free
+Display memory usage information.
+
+### help
+Display help information about available commands.
+
+### date
+Show or set the current date and time.
+
+### system
+System-related commands.
+- system reboot - Reboot the device
+- system info - Show system information
+- system heap - Show heap memory usage
+    
