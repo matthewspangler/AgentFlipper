@@ -14,6 +14,8 @@ A Python solution that connects your Flipper Zero any LLM service including loca
 - Intelligently executes multi-step tasks
 - Comprehensive logging for debugging
 
+![screenshot of flipper agent](./screenshot.png)
+
 For technical details, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Requirements
