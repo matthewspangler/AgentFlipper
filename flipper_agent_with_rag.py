@@ -11,6 +11,7 @@ import argparse
 import os
 import sys
 import yaml
+import json
 import re
 import logging
 import time
@@ -21,16 +22,27 @@ from typing import Dict, Any, Optional, List, Tuple
 LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_DIR, f"flipper_agent_{time.strftime('%Y%m%d_%H%M%S')}.log")
+AI_LOG_FILE = os.path.join(LOG_DIR, f"flipper_agent_ai_{time.strftime('%Y%m%d_%H%M%S')}.log")
 
-# Configure logging - default to file only
+# Configure main logger - default to file only
 logger = logging.getLogger("FlipperAgent")
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# Add file handler
+# Add file handler for main logger
 file_handler = logging.FileHandler(LOG_FILE)
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
+
+# Configure AI response logger
+ai_logger = logging.getLogger("FlipperAgentAI")
+ai_logger.setLevel(logging.INFO)
+ai_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Add file handler for AI logger
+ai_file_handler = logging.FileHandler(AI_LOG_FILE)
+ai_file_handler.setFormatter(ai_formatter)
+ai_logger.addHandler(ai_file_handler)
 
 # Console handler will be added based on command line option
 
@@ -176,17 +188,6 @@ class FlipperZeroManager(HardwareManager):
             raise ConnectionError("Device not connected")
             
         try:
-            logger.info(f"Executing command: {command}")
-            return self.connection._serial_wrapper.send(command)
-        except Exception as e:
-            logger.error(f"Command failed: {str(e)}")
-            self.disconnect()
-            raise
-        if not self.flipper:
-            logger.error("Not connected to Flipper Zero")
-            return "Error: Not connected to Flipper Zero"
-        
-        try:
             # Display command in orange color with separator
             print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
             print(f"{Colors.GREEN}✓ Sent command -> {command}{Colors.ENDC}")
@@ -194,9 +195,14 @@ class FlipperZeroManager(HardwareManager):
             logger.info(f"Executing command: {command}")
             
             # Access the private serial wrapper to send arbitrary commands
-            response = self.flipper._serial_wrapper.send(command)
+            response = self.connection._serial_wrapper.send(command)
             logger.info(f"Command response: {response}")
-            return response if response.strip() else "no device response"
+            
+            # Handle empty responses and device prompts
+            cleaned_response = response.strip()
+            if not cleaned_response or cleaned_response in [">", ">:"]:
+                return "Command executed successfully"
+            return response
         except Exception as e:
             error_msg = f"Error executing command: {str(e)}"
             logger.error(error_msg)
@@ -350,56 +356,62 @@ class LLMAgent:
         self.model_name = config.get("model", "qwen2.5-coder:14b")
         self.api_base = config.get("api_base", "http://localhost:11434")
         
-        # Fixed system prompt with all the technical instructions and special markers
+        # Fixed system prompt with explicit completion requirements
         self.system_prompt = """You are an assistant controlling a Flipper Zero device through its CLI.
 You need to intelligently determine when to provide commands versus information.
 
-SPECIAL MARKERS - You MUST use ONE OR MORE of these exact formats in your responses:
-1. When providing commands: ':COMMAND:' followed by the commands on separate lines.
-   This should ONLY output commands to be sent to the device, with NOTHING else besides the marker and commands.
+Use the following tools to structure your responses:
 
-2. For informational responses: ':INFO: [your information here]'
-   This provides information to the user and will be output to the terminal.
+1. execute_commands: For sending commands to the Flipper Zero device
+2. provide_information: For displaying information to the user
+3. ask_question: For asking the user for clarification
+4. mark_task_complete: To indicate the task is finished
 
-3. When needing clarification: ':QUESTION: [your question here]'
-   This pauses execution and shows a prompt for user input.
+You MUST use these tools to structure your responses. Do not use any special markers.
 
-4. When a task is fully complete: ':TASK_COMPLETE:'
-   This returns to the main input prompt. You MUST include this when done to allow the user to respond to you.
-   Without this marker, the system will continue looping indefinitely.
+The system will automatically process tool calls in the order they are provided.
 
-You can include MULTIPLE marker types in a single response. Your response is NOT limited to just commands.
-For example, you can provide both :COMMAND: and :INFO: sections in the same response when appropriate.
+CRITICAL: After completing the user's request, you MUST call mark_task_complete to return control to the user.
+Without this, the system will loop indefinitely.
 
-The system processes your response in this order:
-- First processes any :COMMAND: markers to execute commands
-- Then processes any :INFO: markers to display information
-- Finally processes :TASK_COMPLETE: if present, otherwise continues the loop with another prompt
+IMPORTANT: For every command execution, you MUST include mark_task_complete in the same response.
+The only exceptions are when you need to ask a question or provide additional information.
 
-IMPORTANT: If your response includes :COMMAND: or :INFO: but no :TASK_COMPLETE:, the system will
-continue with another loop, feeding your previous output and context into the next input.
-You must explicitly mark the task as complete with :TASK_COMPLETE: when all requested actions
-are done, or the system will continue looping.
+RULES:
+1. When you have COMPLETELY satisfied the user's request, ALWAYS include mark_task_complete
+2. If you need to execute multiple commands to satisfy the request, do so before marking complete
+3. Only ask questions when you need clarification to complete the task
+4. Provide information when it helps the user understand what was done
 
 Examples:
 
-For command execution only:
-:COMMAND:
-led g 255
-led bl 255
+For command execution with completion:
+[
+  {
+    "name": "execute_commands",
+    "arguments": {
+      "commands": ["led bl 0"]
+    }
+  },
+  {
+    "name": "mark_task_complete",
+    "arguments": {}
+  }
+]
 
-For information requests only:
-:INFO: The Flipper Zero has RGB LEDs that can display different colors.
-
-For mixed command and information:
-:COMMAND:
-nfc detect
-:INFO: Started the NFC detection process. The Flipper will now scan for nearby NFC tags.
-
-For command with final task completion:
-:COMMAND:
-nfc save mycard
-:TASK_COMPLETE:
+For information display with completion:
+[
+  {
+    "name": "provide_information",
+    "arguments": {
+      "information": "Backlight turned off"
+    }
+  },
+  {
+    "name": "mark_task_complete",
+    "arguments": {}
+  }
+]
 
 Available commands include: info, gpio, ibutton, irda, lfrfid, nfc, subghz, usb,
 vibro, update, bt, storage, bad_usb, backlight, led, and others.
@@ -424,7 +436,7 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
             # Handle other providers if needed
             self.full_model = f"{self.provider}/{self.model_name}"
     
-    def get_commands(self, user_input: str, previous_results: Optional[List[Tuple[str, str]]] = None) -> List[str]:
+    def get_commands(self, user_input: str, previous_results: Optional[List[Tuple[str, str]]] = None) -> List[dict]:
         """
         Get Flipper Zero commands from the LLM based on user input and previous results.
         
@@ -433,7 +445,7 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
             previous_results: Optional list of previous command results as (command, response) tuples
             
         Returns:
-            List of commands to execute or informational response
+            List of tool call objects (each is a dict with 'name' and 'arguments')
         """
         try:
             # Prepare API parameters
@@ -454,7 +466,6 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
                 if docs:
                     context = "Here is relevant information about Flipper Zero CLI commands:\n\n"
                     context += "\n\n".join(docs)
-                    logger.info(f"Retrieved {len(docs)} relevant documents")
                     logger.info(f"Retrieved {len(docs)} relevant documents")
             
             # Build the enhanced system prompt with user prompt and retrieved context
@@ -488,7 +499,12 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
                 for cmd, resp in previous_results:
                     result_content += f"Command: {cmd}\nResponse: {resp}\n\n"
                 
-                result_content += "Based on these results, provide the next commands to execute, or use :TASK_COMPLETE: to indicate completion. Use :INFO: to provide information or analysis to the user."
+                # Add context for next action
+                if any("error" in resp.lower() for cmd, resp in previous_results):
+                    result_content += "Based on these results, provide the next tool calls to continue the task."
+                else:
+                    result_content += "The command executed successfully. You MUST include mark_task_complete in your response to prevent an infinite loop."
+                    
                 messages.append({"role": "user", "content": result_content})
                 logger.info("Added previous command results to prompt")
             
@@ -500,107 +516,137 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
             print(f"{Colors.PURPLE}Thinking...{Colors.ENDC}")  # Keep yellow
             
             try:
+                # Use function calling with tool definitions
+                tools = [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "execute_commands",
+                            "description": "Execute commands on the Flipper Zero device",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "commands": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "List of commands to execute"
+                                    }
+                                },
+                                "required": ["commands"]
+                            }
+                        }
+                    },
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "provide_information",
+                            "description": "Provide information to the user",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "information": {
+                                        "type": "string",
+                                        "description": "Information to display to the user"
+                                    }
+                                },
+                                "required": ["information"]
+                            }
+                        }
+                    },
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "ask_question",
+                            "description": "Ask the user a question",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "question": {
+                                        "type": "string",
+                                        "description": "Question to ask the user"
+                                    }
+                                },
+                                "required": ["question"]
+                            }
+                        }
+                    },
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "mark_task_complete",
+                            "description": "Mark the task as complete",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {}
+                            }
+                        }
+                    }
+                ]
+                
                 response = completion(
                     model=self.full_model,
                     messages=messages,
-                    temperature=0.3,  # Lower temperature for more deterministic output
-                    max_tokens=500,   # Allow for multiple commands
+                    tools=tools,
+                    tool_choice="auto",
+                    temperature=0.3,
+                    max_tokens=500,
                     **api_params
                 )
                 
-                # Extract the response content
+                # Extract tool calls from response
+                tool_calls = []
                 if hasattr(response, 'choices') and len(response.choices) > 0:
-                    content = response.choices[0].message.content
-                else:
-                    content = str(response)
+                    message = response.choices[0].message
+                    if hasattr(message, 'tool_calls'):
+                        for call in message.tool_calls:
+                            try:
+                                # Parse arguments as JSON
+                                arguments = json.loads(call.function.arguments)
+                                tool_calls.append({
+                                    "name": call.function.name,
+                                    "arguments": arguments
+                                })
+                            except json.JSONDecodeError:
+                                logger.error(f"Failed to parse tool call arguments: {call.function.arguments}")
+                                ai_logger.error(f"Failed to parse tool call arguments: {call.function.arguments}")
+                
+                logger.info(f"Generated {len(tool_calls)} tool calls")
+                
+                # Log AI response for debugging
+                ai_logger.info("===== AI RESPONSE =====")
+                ai_logger.info(f"Model: {self.full_model}")
+                ai_logger.info(f"Input Messages: {json.dumps(messages, indent=2)}")
+                ai_logger.info(f"Raw Response: {response}")
+                ai_logger.info(f"Tool Calls: {json.dumps(tool_calls, indent=2)}")
+                ai_logger.info("======================")
+                
+                # Validate tool calls format
+                if tool_calls:
+                    # Check if mark_task_complete is missing after execute_commands
+                    has_execute = any(call['name'] == 'execute_commands' for call in tool_calls)
+                    has_mark = any(call['name'] == 'mark_task_complete' for call in tool_calls)
                     
+                    if has_execute and not has_mark:
+                        # Add mark_task_complete if missing
+                        tool_calls.append({
+                            "name": "mark_task_complete",
+                            "arguments": {}
+                        })
+                        logger.warning("Added missing mark_task_complete tool call")
+                
+                return tool_calls
+                
             except Exception as e:
-                logger.error(f"LLM API error: {str(e)}", exc_info=True)
-                return [f"INFO: Error communicating with LLM: {str(e)}"]
+                error_msg = f"LLM API error: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                ai_logger.error(f"LLM API error: {str(e)}", exc_info=True)
+                return [{"name": "provide_information", "arguments": {"information": f"Error: {str(e)}"}}]
             
-            logger.debug(f"Raw response: {content}")
-            
-            # Clean up the response
-            content = content.strip()
-            
-            # Parse the response to extract different sections
-            command_section = None
-            info_section = None
-            task_complete = False
-            
-            # Extract command section if present
-            command_match = re.search(r':COMMAND:(.*?)(?=:(?:INFO|TASK_COMPLETE):|$)', content, re.DOTALL)
-            if command_match:
-                command_section = command_match.group(1).strip()
-                logger.info(f"Found command section: {command_section}")
-            
-            # Extract info section if present
-            info_match = re.search(r':INFO:\s*(.*?)(?=:(?:COMMAND|TASK_COMPLETE):|$)', content, re.DOTALL)
-            if info_match:
-                info_section = info_match.group(1).strip()
-                logger.info(f"Found info section: {info_section}")
-            
-            # Check if task is complete
-            task_complete = ':TASK_COMPLETE:' in content
-            if task_complete:
-                logger.info("Task marked as complete by AI")
-                self.task_in_progress = False
-                self.task_description = ""
-                # We'll let the process_user_request function handle the final summary
-            
-            # Process command section if present
-            commands = []
-            if command_section:
-                # Clean the command section
-                # Remove any markdown code block markers
-                cleaned_command = re.sub(r'```.*?\n', '', command_section, flags=re.DOTALL)
-                cleaned_command = re.sub(r'```', '', cleaned_command)
-                
-                # Remove any "Command:" prefixes
-                cleaned_command = re.sub(r'^.*?Command[s]?:[ \t]*', '', cleaned_command, flags=re.MULTILINE)
-                
-                # Final cleanup and strip
-                cleaned_command = cleaned_command.strip()
-                
-                # Parse into individual commands
-                if cleaned_command:
-                    commands = parse_commands(cleaned_command)
-                    logger.info(f"Generated {len(commands)} commands: {commands}")
-                else:
-                    logger.info("Command section was empty after cleaning")
-            
-            # Process info section if present (return as a special command that will be handled)
-            if info_section and not commands:
-                logger.info(f"Information response: {info_section}")
-                return [f"INFO: {info_section}"]
-                
-            # Final task completion check
-            if task_complete:
-                # Always return the task completion marker to ensure process_user_request knows it's complete
-                # If there are commands, include them along with the completion marker
-                if commands:
-                    commands.append("INFO: Task completed successfully.")
-                    return commands
-                else:
-                    return ["INFO: Task completed successfully."]
-            
-            logger.info(f"Generated {len(commands)} commands: {commands}")
-            
-            # Add to conversation history
-            if not previous_results:  # Only add the original user query once
-                self.conversation_history.append({"role": "user", "content": user_input})
-            
-            # Store conversation history
-            self.conversation_history.append({"role": "assistant", "content": content})
-            
-            # Prune history if it exceeds the token limit
-            self._prune_history_by_tokens()
-            
-            return commands
         except Exception as e:
-            error_msg = f"Error generating commands: {str(e)}"
+            error_msg = f"Error generating tool calls: {str(e)}"
             logger.error(error_msg, exc_info=True)
-            return [f"INFO: {error_msg}"]
+            ai_logger.error(error_msg, exc_info=True)
+            return [{"name": "provide_information", "arguments": {"information": error_msg}}]
     
     def _prune_history_by_tokens(self):
         """Prune conversation history to stay under the token limit"""
@@ -707,13 +753,13 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
 
 def process_user_request(user_input: str, flipper_agent: FlipperZeroManager, llm_agent: LLMAgent, recursion_depth: int = 0):
     """
-    Process a user request and execute any commands.
+    Process a user request and execute any tool calls.
     
     Args:
         user_input: The user's input text
         flipper_agent: The agent that communicates with Flipper Zero
-        llm_agent: The agent that generates commands using LLM
-        recursion_depth: Current recursion depth for follow-up commands
+        llm_agent: The agent that generates tool calls using LLM
+        recursion_depth: Current recursion depth for follow-up tool calls
         
     Returns:
         None
@@ -734,81 +780,88 @@ def process_user_request(user_input: str, flipper_agent: FlipperZeroManager, llm
         print(f"\n{Colors.CYAN}Progress Summary:{Colors.ENDC}")
         print(f"{summary}\n")
     
-    # Get commands from LLM
-    response = llm_agent.get_commands(user_input)
+    # Get tool calls from LLM
+    tool_calls = llm_agent.get_commands(user_input)
     
     # Handle empty response
-    if not response:
-        logger.warning("No response was generated by the LLM")
+    if not tool_calls:
+        logger.warning("No tool calls were generated by the LLM")
         print(f"\n{Colors.WARNING}No response was generated. Try rephrasing your request.{Colors.ENDC}")
         return
     
-    # Check if this response contains a task completion marker
-    task_completed = any(cmd.startswith("INFO: Task completed successfully") for cmd in response)
-    
-    # Extract special command types
-    info_commands = [cmd[5:].strip() for cmd in response if cmd.startswith("INFO:")]
-    question_commands = [cmd[10:].strip() for cmd in response if cmd.startswith("QUESTION:")]
-    regular_commands = [cmd for cmd in response if not cmd.startswith("INFO:") and not cmd.startswith("QUESTION:")]
-    
-    # Process questions first
-    for question in question_commands:
-        print(f"{Colors.BLUE}{'─' * 50}{Colors.ENDC}")
-        print(f"{Colors.BLUE}? {question}{Colors.ENDC}")
-        print(f"{Colors.BLUE}{'─' * 50}{Colors.ENDC}")
-        return  # Pause execution for user input
-    
-    # Process informational responses
-    for info in info_commands:
-        print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
-        print(f"{Colors.GREEN}# Information:{Colors.ENDC}")
-        print(f"{Colors.BOLD}{info}{Colors.ENDC}")
-        print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
-    
-    # Process commands after handling questions/info
-    
-    # Process regular commands if any
-    results = []
-    if regular_commands:
-        print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
-        print(f"{Colors.PURPLE}Executing {len(regular_commands)} commands...{Colors.ENDC}")
-        for i, cmd in enumerate(regular_commands, 1):
-            print(f"{Colors.BOLD}{i}.{Colors.ENDC} {cmd}")
-        # Add a green separator line for clarity
-        print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
+    # Process each tool call
+    for call in tool_calls:
+        name = call["name"]
+        args = call["arguments"]
         
-        # Execute commands and get results
-        results = flipper_agent.execute_commands(regular_commands)
-        
-        # Add results to conversation history for better summaries
-        llm_agent.add_execution_results_to_history(results)
+        if name == "execute_commands":
+            commands = args["commands"]
+            # Execute commands and get results
+            print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
+            print(f"{Colors.PURPLE}Executing {len(commands)} commands...{Colors.ENDC}")
+            for i, cmd in enumerate(commands, 1):
+                print(f"{Colors.BOLD}{i}.{Colors.ENDC} {cmd}")
+            print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
+            results = flipper_agent.execute_commands(commands)
+            
+            # Check for command errors
+            command_failed = False
+            for cmd, resp in results:
+                if "error" in resp.lower() or "illegal" in resp.lower():
+                    command_failed = True
+                    break
+            
+            # Add results to conversation history for better summaries
+            llm_agent.add_execution_results_to_history(results)
+            
+            # If command failed, provide error information
+            if command_failed:
+                error_info = "Command execution failed. Please check the device response."
+                print(f"{Colors.FAIL}{'─' * 50}{Colors.ENDC}")
+                print(f"{Colors.FAIL}# Error:{Colors.ENDC}")
+                print(f"{Colors.BOLD}{error_info}{Colors.ENDC}")
+                print(f"{Colors.FAIL}{'─' * 50}{Colors.ENDC}")
+            
+        elif name == "provide_information":
+            information = args["information"]
+            # Display information to user
+            print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
+            print(f"{Colors.GREEN}# Information:{Colors.ENDC}")
+            print(f"{Colors.BOLD}{information}{Colors.ENDC}")
+            print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
+            
+        elif name == "ask_question":
+            question = args["question"]
+            # Ask user question
+            print(f"{Colors.BLUE}{'─' * 50}{Colors.ENDC}")
+            print(f"{Colors.BLUE}? {question}{Colors.ENDC}")
+            print(f"{Colors.BLUE}{'─' * 50}{Colors.ENDC}")
+            return  # Pause execution for user input
+            
+        elif name == "mark_task_complete":
+            # Mark task as complete
+            print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
+            print(f"{Colors.GREEN}✓ Task completed {Colors.ENDC}")
+            print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
+            llm_agent.task_in_progress = False
+            llm_agent.task_description = ""
+            return True  # Indicate task completion
     
-    # NOW check if task is complete (either by marker or directly detected)
-    # This ensures task completion is the last thing shown
-    if task_completed or not llm_agent.task_in_progress:
-        # Generate final summary if task is complete
-        print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
-        summary = llm_agent.generate_summary()
-        print(f"{Colors.GREEN}# Final Summary:{Colors.ENDC}")
-        print(f"{summary}")
-        # Make "Task completed" the last thing displayed before a new prompt
-        print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
-        print(f"{Colors.GREEN}✓ Task completed {Colors.ENDC}")
-        print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
-        return
+    # If we get here, we processed all tool calls without completing the task or asking a question
+    # Check if we executed any commands - if so, force task completion to prevent infinite loops
+    command_executed = any(call["name"] == "execute_commands" for call in tool_calls)
+    task_completed = any(call["name"] == "mark_task_complete" for call in tool_calls)
     
-    # Default behavior: continue the loop if not complete and under recursion limit
+    if command_executed and not task_completed and recursion_depth > 0:
+        print(f"\n{Colors.ORANGE}Command executed but task not marked complete. Forcing completion to prevent loop.{Colors.ENDC}")
+        llm_agent.task_in_progress = False
+        llm_agent.task_description = ""
+        return True
+    
+    # Continue the loop if under recursion limit
     if recursion_depth < llm_agent.max_recursion_depth:
-        # Always analyze results, even if no commands were executed
-        print(f"\n{Colors.PURPLE}Analyzing results...{Colors.ENDC}")
-        
-        # Pass the results explicitly so the LLM can analyze them
-        if results:
-            # Get next set of commands based on the results
-            process_user_request(user_input, flipper_agent, llm_agent, recursion_depth + 1)
-        else:
-            # No commands were executed, just continue with the request
-            process_user_request(user_input, flipper_agent, llm_agent, recursion_depth + 1)
+        print(f"\n{Colors.PURPLE}Continuing task...{Colors.ENDC}")
+        process_user_request(user_input, flipper_agent, llm_agent, recursion_depth + 1)
 
 # === Main Execution Flow ===
 def main():
@@ -914,7 +967,7 @@ def display_connection_banner(config: Dict[str, Any], agent: LLMAgent):
     print(f"✓ LLM Provider/Model: {agent.provider}/{agent.model_name:^35}")
     print(f"✓ Context History: {agent.max_history_tokens} tokens{'':^20}")
     print(f"✓ Log File: {LOG_FILE:^45}")
-    print(f"{'─' * 58}┘{Colors.ENDC}")
+    print(f"{'─' * 58}{Colors.ENDC}")
     print(f"{Colors.GREEN}✓ Ready for commands (type '/help' for assistance){Colors.ENDC}")
 
 def run_interactive_loop(flipper_agent: FlipperZeroManager, llm_agent: LLMAgent):
