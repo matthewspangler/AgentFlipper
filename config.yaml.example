@@ -1,0 +1,24 @@
+flipper:
+  # Serial port for Flipper Zero
+  port: /dev/ttyACM0
+  # Timeout for operations
+  timeout: 5.0
+
+llm:
+  # LLM provider configuration
+  provider: ollama
+  # Model to use
+  model: qwen2.5-coder:14b
+  # API base URL for Ollama
+  api_base: http://localhost:11434
+  # Maximum token count for conversation history (industry best practice)
+  # Older messages will be removed to stay under this limit
+  max_history_tokens: 6000
+  # Maximum recursion depth for command loops
+  # Prevents infinite loops by limiting how many times the AI can continue processing
+  max_recursion_depth: 10
+  # User-specific prompt that gets added to system prompt
+  # This can be customized without affecting the core system instructions
+  user_prompt: >
+    You are an assistant specialized in controlling the Flipper Zero device.
+    Try to be efficient with your commands, and provide accurate results.

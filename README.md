@@ -1,15 +1,18 @@
 # Flipper Zero AI Agent
 
-A Python solution that connects your Flipper Zero to LiteLLM with Ollama as the backend, allowing you to control your Flipper Zero using natural language commands with context-aware conversations.
+A Python solution that connects your Flipper Zero any LLM service including local Ollama, allowing you to control your Flipper Zero using natural language commands with context-aware conversations.
+
+⚠️ This project is under very active development, experimentation, and rapid-prototyping ⚠️
 
 ## Overview
 
 - Controls Flipper Zero over serial via PyFlipper
-- Connects to Ollama or whatever LLM provider you prefer, with LiteLLM
+- Uses LiteLLM as the backend to allow you to use any LLM endpoint
 - Uses Retrieval-Augmented Generation (RAG) make sure the LLM is aware of Flipper documentation
+- Uses LangChain for tool/function calling
 - Maintains conversation context for natural follow-up commands
 - Intelligently executes multi-step tasks
-- Comprehensive logging for debugging and analysis
+- Comprehensive logging for debugging
 
 For technical details, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
@@ -21,28 +24,28 @@ For technical details, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Installation
 
-### Using Setup Script
-
-```bash
-./setup.sh
-```
-
-### Manual
-
-1. Clone this repository with submodules:
+Clone this repository with submodules:
 
 ```bash
 git clone --recursive https://github.com/yourusername/flipper-agent
 cd flipper-agent
 ```
 
-2. Install required Python packages:
+### Using Setup Script
+
+```bash
+./setup.sh
+```
+
+### Manual Method
+
+1. Install required Python packages:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Pull the recommended Qwen model in Ollama:
+2. Pull the recommended Qwen model in Ollama:
 
 ```bash
 ollama pull qwen2.5-coder:14b
@@ -52,34 +55,24 @@ ollama pull qwen2.5-coder:14b
 
 ## Usage
 
-1. First, build the documentation database (only needed once):
+1. If you don't use the run.sh script, you will need to build the documentation database (only needed once):
 
 ```bash
 ./flipper_docs_loader.py
 ```
 
-2. Connect your Flipper Zero to your computer via USB
-
-3. Run the agent:
-
-```bash
-./run.sh
-```
-
-Or run the Python script directly:
+2. And then you can run the agent:
 
 ```bash
 ./flipper_agent_with_rag.py
 ```
 
-4. Enter your commands in natural language:
+3. Enter your commands in natural language:
    - "Show device information and status"
    - "Turn on the green LED and set backlight to 50%"
    - "Scan for NFC tags and save any found ones"
    - "Help me clone this NFC tag to file 'mycard'"
    - "Analyze the last SubGHz scan results"
-
-The RAG system will retrieve relevant CLI documentation to help generate more accurate commands.
 
 ## Command-line Options
 
