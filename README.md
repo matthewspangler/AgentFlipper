@@ -15,15 +15,17 @@ For technical details, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Requirements
 
-- Python 3.6+ and pip dependencies listed in requirements.txt
+- Python 3.9+ and pip dependencies listed in requirements.txt
 - Flipper Zero device
 - Ollama or an LLM provider
 
 ## Installation
 
-### Using install script
+### Using Setup Script
 
-You can use the provided `setup.sh` script to install all dependencies.
+```bash
+./setup.sh
+```
 
 ### Manual
 
@@ -40,7 +42,7 @@ cd flipper-agent
 pip install -r requirements.txt
 ```
 
-3. Pull the Qwen model in Ollama (or another model of your choice):
+3. Pull the recommended Qwen model in Ollama:
 
 ```bash
 ollama pull qwen2.5-coder:14b
@@ -71,10 +73,11 @@ Or run the Python script directly:
 ```
 
 4. Enter your commands in natural language:
-   - "Show me device information"
-   - "Turn on the green LED"
-   - "Scan for NFC tags"
-   - "Display the current date"
+   - "Show device information and status"
+   - "Turn on the green LED and set backlight to 50%"
+   - "Scan for NFC tags and save any found ones"
+   - "Help me clone this NFC tag to file 'mycard'"
+   - "Analyze the last SubGHz scan results"
 
 The RAG system will retrieve relevant CLI documentation to help generate more accurate commands.
 
@@ -84,10 +87,10 @@ The agent supports these options:
 
 - `--port PORT`: Specify the serial port (default: /dev/ttyACM0)
 - `--config FILE`: Use a custom config file
-- `--model MODEL`: Use a specific model (e.g., "llama3:latest")
+- `--model MODEL`: Use a specific model (e.g., "ollama/qwen2.5-coder:14b")
 - `--no-rag`: Disable RAG retrieval system
 - `--max-history-tokens TOKENS`: Set maximum token count for conversation history
-- `--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}`: Set logging verbosity
+- `--console-log`: Show log messages in console (default: log to file only)
 - `--console-log`: Show log messages in console (default: log to file only)
 - `--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}`: Set logging verbosity
 
@@ -99,4 +102,4 @@ The config file is loaded from:
 
 ## Licensing
 
-GPLv3 License
+GNU General Public License v3.0 (GPLv3)

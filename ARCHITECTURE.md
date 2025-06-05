@@ -24,10 +24,10 @@ This document describes the architecture and technical details of the Flipper Ze
 The agent uses special markers for structured communication between components:
 
 ### 1. Command Marker
-The `:COMMANDS:` marker explicitly identifies content that should be executed as commands.
+The `:COMMAND:` marker explicitly identifies content that should be executed as commands.
 
 ```
-:COMMANDS:
+:COMMAND:
 led g 255
 led bl 255
 ```
@@ -37,22 +37,7 @@ This marker ensures that:
 - Other text/markers won't interfere with command execution
 - Command boundaries are clearly delineated
 
-### 2. Checkpoint Marker
-The `:CHECKPOINT:` marker indicates a point where evaluation is needed.
-
-```
-:COMMANDS:
-nfc detect
-:CHECKPOINT: Checking NFC scan results
-```
-
-When the LLM includes this marker, the agent will:
-- Process the current set of commands
-- Display the checkpoint message to the user
-- Continue execution, usually waiting for command results
-- Use these results to determine the next steps
-
-### 3. Task Completion
+### 2. Task Completion
 The `:TASK_COMPLETE:` marker indicates a task has been fully finished.
 
 ```
@@ -68,20 +53,7 @@ When the LLM includes this marker, the agent will:
 - Reset task tracking state
 - Return control to the user
 
-### 4. Command Summary
-The `:SUMMARY: [text]` marker provides a concise summary of what was done.
-
-```
-led g on
-led b off
-:SUMMARY: Turned on green LED and turned off blue LED
-```
-
-This serves two purposes:
-- Displays a helpful summary to the user
-- Creates compressed context for token-efficient history
-
-### 4. Information Responses
+### 3. Information Responses
 The `:INFO: [text]` marker is used for non-command informational content.
 
 ```
@@ -92,19 +64,6 @@ When detected, the agent will:
 - Display the information to the user
 - Skip command execution
 - Store the information in conversation history
-
-### 5. Continuation
-The `:CONTINUE: [reason]` marker signals that the agent should continue processing without user input.
-
-```
-subghz scan
-:CONTINUE: Need to analyze the scan results before next step
-```
-
-This enables:
-- Multi-step autonomous operations
-- Result analysis and follow-up commands
-- Complex task sequences without user intervention
 
 ## Token-Efficient Context Management
 
@@ -152,11 +111,36 @@ With the `:CONTINUE:` marker, the agent can execute multi-step sequences:
 
 ## Logging System
 
+
 Comprehensive logging captures all aspects of agent operation:
 
-- Command execution and responses
-- LLM interactions
-- Context management decisions
-- Errors and exceptions
+- Command execution and responses (flipper_agent_with_rag.py lines 179-203)
+- LLM interactions (LLMAgent class)
+- Context management decisions (estimate_tokens and _prune_history_by_tokens)
+- Errors and exceptions (try/except blocks throughout)
 
-Logs are timestamped and stored in the `logs` directory for debugging and analysis.
+Logs are timestamped and stored in the `logs` directory (configured in flipper_agent_with_rag.py lines 21-23) using rotating file handlers.
+
+## Build & Execution
+
+The system uses two key shell scripts:
+
+### setup.sh
+- Creates Python virtual environment
+- Installs dependencies from requirements.txt
+- Initializes PyFlipper submodule
+- Sets executable permissions
+
+### run.sh
+- Handles command-line arguments
+- Manages documentation vector store
+- Configures LLM parameters
+- Launches main agent with proper environment
+
+## Dependencies
+
+- PyFlipper (submodule for hardware communication)
+- LangChain (RAG pipeline)
+- FAISS (vector store)
+- HuggingFace Embeddings (text embeddings)
+- LiteLLM (LLM API abstraction)

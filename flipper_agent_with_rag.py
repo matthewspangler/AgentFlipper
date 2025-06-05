@@ -361,10 +361,12 @@ SPECIAL MARKERS - You MUST use ONE OR MORE of these exact formats in your respon
 2. For informational responses: ':INFO: [your information here]'
    This provides information to the user and will be output to the terminal.
 
-3. When a task is fully complete and should return to user: ':TASK_COMPLETE:'
-   This tells the system to return an input prompt to the user. You MUST include this
-   marker when you've completed all the tasks requested by the user. Without this marker,
-   the system will continue looping indefinitely.
+3. When needing clarification: ':QUESTION: [your question here]'
+   This pauses execution and shows a prompt for user input.
+
+4. When a task is fully complete: ':TASK_COMPLETE:'
+   This returns to the main input prompt. You MUST include this when done to allow the user to respond to you.
+   Without this marker, the system will continue looping indefinitely.
 
 You can include MULTIPLE marker types in a single response. Your response is NOT limited to just commands.
 For example, you can provide both :COMMAND: and :INFO: sections in the same response when appropriate.
@@ -746,7 +748,15 @@ def process_user_request(user_input: str, flipper_agent: FlipperZeroManager, llm
     
     # Extract special command types
     info_commands = [cmd[5:].strip() for cmd in response if cmd.startswith("INFO:")]
-    regular_commands = [cmd for cmd in response if not cmd.startswith("INFO:")]
+    question_commands = [cmd[10:].strip() for cmd in response if cmd.startswith("QUESTION:")]
+    regular_commands = [cmd for cmd in response if not cmd.startswith("INFO:") and not cmd.startswith("QUESTION:")]
+    
+    # Process questions first
+    for question in question_commands:
+        print(f"{Colors.BLUE}{'─' * 50}{Colors.ENDC}")
+        print(f"{Colors.BLUE}? {question}{Colors.ENDC}")
+        print(f"{Colors.BLUE}{'─' * 50}{Colors.ENDC}")
+        return  # Pause execution for user input
     
     # Process informational responses
     for info in info_commands:
@@ -755,7 +765,7 @@ def process_user_request(user_input: str, flipper_agent: FlipperZeroManager, llm
         print(f"{Colors.BOLD}{info}{Colors.ENDC}")
         print(f"{Colors.GREEN}{'─' * 50}{Colors.ENDC}")
     
-    # First process all commands and info, BEFORE checking for task completion
+    # Process commands after handling questions/info
     
     # Process regular commands if any
     results = []
