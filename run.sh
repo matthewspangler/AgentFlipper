@@ -153,7 +153,7 @@ if [ "$CONSOLE_LOG" = true ]; then
 fi
 
 # Run the agent
-echo -e "\n${GREEN}Starting Flipper Zero AI Agent...${NC}"
+echo -e "\n${PURPLE}Starting Flipper Zero AI Agent...${NC}"
 if [ "$ENHANCED_PROMPT" = true ]; then
     echo -e "${PURPLE}With enhanced prompt (live documentation)${NC}"
 fi

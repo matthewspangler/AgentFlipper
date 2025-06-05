@@ -124,31 +124,64 @@ def load_config() -> Dict[str, Any]:
         print(f"{Colors.GREEN}✓ Loaded config from {config_path}{Colors.ENDC}")
         return config
 
-class FlipperAgent:
-    """Class that interacts with Flipper Zero using PyFlipper"""
+class HardwareManager:
+    """Base class for hardware device management"""
     
     def __init__(self, port: str):
-        """Initialize the connection to Flipper Zero using PyFlipper"""
         self.port = port
-        self.flipper = None
+        self.connection = None
+        self._connected = False
+    
+    @property
+    def is_connected(self) -> bool:
+        """Return connection status"""
+        return self._connected
+
+    def connect(self) -> bool:
+        """Establish connection to hardware device"""
+        raise NotImplementedError
+
+    def disconnect(self):
+        """Close hardware connection and cleanup resources"""
+        if self.connection:
+            try:
+                self.connection.close()
+                logger.debug("Hardware connection closed gracefully")
+            except Exception as e:
+                logger.error(f"Error closing connection: {str(e)}")
+        self.connection = None
+        self._connected = False
+        logger.info("Hardware connection terminated")
+
+class FlipperZeroManager(HardwareManager):
+    """Manages Flipper Zero device communication using PyFlipper"""
     
     def connect(self) -> bool:
-        """Connect to the Flipper Zero using PyFlipper"""
+        """Establish connection to Flipper Zero"""
         try:
-            # Initialize PyFlipper with COM port
-            logger.info(f"Connecting to Flipper Zero on port {self.port}")
-            self.flipper = PyFlipper(com=self.port)
-            # Test connection by getting device info
-            self.flipper.device_info.info()
-            logger.info("Successfully connected to Flipper Zero")
+            logger.info(f"Connecting to Flipper Zero on {self.port}")
+            self.connection = PyFlipper(com=self.port)
+            self.connection.device_info.info()  # Test connection
+            self._connected = True
+            logger.info("Flipper Zero connection established")
             return True
         except Exception as e:
-            logger.error(f"Error connecting to Flipper Zero: {str(e)}")
-            print(f"{Colors.FAIL}Error connecting to Flipper Zero: {str(e)}{Colors.ENDC}")
+            logger.error(f"Connection failed: {str(e)}")
+            self.disconnect()
             return False
-    
+
     def send_command(self, command: str) -> str:
-        """Send a command to Flipper Zero and return the response"""
+        """Execute a command on the Flipper Zero device"""
+        if not self.is_connected:
+            raise ConnectionError("Device not connected")
+            
+        try:
+            logger.info(f"Executing command: {command}")
+            return self.connection._serial_wrapper.send(command)
+        except Exception as e:
+            logger.error(f"Command failed: {str(e)}")
+            self.disconnect()
+            raise
         if not self.flipper:
             logger.error("Not connected to Flipper Zero")
             return "Error: Not connected to Flipper Zero"
@@ -605,12 +638,12 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
         Returns:
             Summary string
         """
-        # Extract the latest exchange
-        if len(self.conversation_history) < 2:
+        # Check if there's meaningful content to summarize
+        if not self.conversation_history:
             return "Task just started, no progress to summarize yet."
             
         # Get the last few exchanges for context
-        recent_history = self.conversation_history[-6:] if len(self.conversation_history) >= 6 else self.conversation_history
+        recent_history = self.conversation_history[-8:] if len(self.conversation_history) >= 8 else self.conversation_history
         
         # Format the conversation for summarization
         summary_prompt = "Please provide a brief summary of what has been accomplished so far:\n\n"
@@ -648,8 +681,29 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
         except Exception as e:
             logger.error(f"Error generating summary: {str(e)}")
             return f"Unable to generate summary: {str(e)}"
+            
+    def add_execution_results_to_history(self, results: List[Tuple[str, str]]):
+        """
+        Add command execution results to the conversation history.
+        This ensures the summary generation has access to what commands were run
+        and what their results were.
+        
+        Args:
+            results: List of (command, response) tuples from command execution
+        """
+        if not results:
+            return
+            
+        # Format the results into a readable message
+        result_content = "Command execution results:\n\n"
+        for cmd, resp in results:
+            result_content += f"Command: {cmd}\nResponse: {resp}\n\n"
+        
+        # Add as a system message to conversation history
+        self.conversation_history.append({"role": "system", "content": result_content})
+        logger.info("Added execution results to conversation history for summarization")
 
-def process_user_request(user_input: str, flipper_agent: FlipperAgent, llm_agent: LLMAgent, recursion_depth: int = 0):
+def process_user_request(user_input: str, flipper_agent: FlipperZeroManager, llm_agent: LLMAgent, recursion_depth: int = 0):
     """
     Process a user request and execute any commands.
     
@@ -715,6 +769,9 @@ def process_user_request(user_input: str, flipper_agent: FlipperAgent, llm_agent
         
         # Execute commands and get results
         results = flipper_agent.execute_commands(regular_commands)
+        
+        # Add results to conversation history for better summaries
+        llm_agent.add_execution_results_to_history(results)
     
     # NOW check if task is complete (either by marker or directly detected)
     # This ensures task completion is the last thing shown
@@ -735,151 +792,195 @@ def process_user_request(user_input: str, flipper_agent: FlipperAgent, llm_agent
         # Always analyze results, even if no commands were executed
         print(f"\n{Colors.PURPLE}Analyzing results...{Colors.ENDC}")
         
-        # Get next set of commands based on the results
-        process_user_request(user_input, flipper_agent, llm_agent, recursion_depth + 1)
+        # Pass the results explicitly so the LLM can analyze them
+        if results:
+            # Get next set of commands based on the results
+            process_user_request(user_input, flipper_agent, llm_agent, recursion_depth + 1)
+        else:
+            # No commands were executed, just continue with the request
+            process_user_request(user_input, flipper_agent, llm_agent, recursion_depth + 1)
 
+# === Main Execution Flow ===
 def main():
-    """Main entry point"""
+    """Orchestrate the application startup and shutdown"""
+    args = parse_arguments()
+    config = load_configuration(args)
+    rag_retriever = initialize_rag_system(args)
+    flipper_agent = establish_flipper_connection(config)
+    llm_agent = configure_llm_agent(config, rag_retriever, args)
+    display_connection_banner(config, llm_agent)
+    run_interactive_loop(flipper_agent, llm_agent)
+
+# === Configuration Management ===
+def parse_arguments() -> argparse.Namespace:
+    """Parse and validate command-line arguments"""
     parser = argparse.ArgumentParser(description='Flipper Zero AI Agent using PyFlipper and RAG')
     parser.add_argument('--port', type=str, help='Serial port for Flipper Zero')
     parser.add_argument('--config', type=str, help='Path to config file')
     parser.add_argument('--model', type=str, help='LLM model to use (format: provider/model or just model name)')
     parser.add_argument('--no-rag', action='store_true', help='Disable RAG system')
-    parser.add_argument('--max-history-tokens', type=int, help='Maximum token count for conversation history')
-    parser.add_argument('--max-recursion-depth', type=int, help='Maximum recursion depth for command loops')
-    parser.add_argument('--log-level', type=str, choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+    parser.add_argument('--max-history-tokens', type=int,
+                       help='Maximum token count for conversation history')
+    parser.add_argument('--max-recursion-depth', type=int,
+                       help='Maximum recursion depth for command loops')
+    parser.add_argument('--log-level', type=str,
+                       choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                        default='INFO', help='Set logging level')
-    
-    args = parser.parse_args()
-    
-    # Set log level
-    logger.setLevel(getattr(logging, args.log_level))
-    logger.info(f"Log level set to {args.log_level}")
-    
-    # Load configuration from custom path or default locations
-    if args.config:
-        with open(args.config, 'r') as f:
-            config = yaml.safe_load(f)
-            logger.info(f"{COLOR.GREEN}-> Loaded config: {args.config}{COLOR.ENDC}")
-    else:
-        config = load_config()
-    
-    # Override port if provided
+    return parser.parse_args()
+
+def load_configuration(args: argparse.Namespace) -> Dict[str, Any]:
+    """Load and merge configuration from files and command-line"""
+    config = load_config_from_file(args.config) if args.config else load_config()
+    apply_command_line_overrides(config, args)
+    return config
+
+def load_config_from_file(config_path: str) -> Dict[str, Any]:
+    """Load configuration from specified file path"""
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+        logger.info(f"Loaded config from {config_path}")
+        return config
+
+def apply_command_line_overrides(config: Dict[str, Any], args: argparse.Namespace):
+    """Apply command-line parameter overrides to configuration"""
     if args.port:
         config["flipper"]["port"] = args.port
-        logger.info(f"Using port {args.port} from command line")
-        
-    # Override model if provided
+        logger.info(f"Command-line override for port: {args.port}")
+    
     if args.model:
-        if '/' in args.model:
-            # If full provider/model format is given, extract provider and model
-            provider, model = args.model.split('/', 1)
-            config["llm"]["provider"] = provider
-            config["llm"]["model"] = model
-        else:
-            # If only model is given, keep current provider
-            config["llm"]["model"] = args.model
-        logger.info(f"Using model {config['llm']['model']} from command line")
-    
-    # Initialize RAG system if not disabled
-    rag_retriever = None
-    if not args.no_rag:
-        print(f"{Colors.PURPLE}Initializing RAG system...{Colors.ENDC}")
-        rag_retriever = RAGRetriever()
-        rag_retriever.initialize()
+        handle_model_override(config, args.model)
+
+def handle_model_override(config: Dict[str, Any], model_spec: str):
+    """Process model specification from command line"""
+    if '/' in model_spec:
+        provider, model = model_spec.split('/', 1)
+        config["llm"]["provider"] = provider
+        config["llm"]["model"] = model
     else:
-        logger.info("RAG system disabled by command line flag")
-    
-    # Initialize Flipper Agent
-    flipper_agent = FlipperAgent(port=config["flipper"]["port"])
-    
-    # Connect to Flipper Zero
-    if not flipper_agent.connect():
-        logger.error("Failed to connect to Flipper Zero")
-        print(f"{Colors.RED}Failed to connect to Flipper Zero. Please check the connection and try again.{Colors.ENDC}")
+        config["llm"]["model"] = model_spec
+    logger.info(f"Command-line override for model: {model_spec}")
+
+# === Hardware Integration ===
+def establish_flipper_connection(config: Dict[str, Any]) -> FlipperZeroManager:
+    """Initialize and validate Flipper Zero connection"""
+    agent = FlipperZeroManager(port=config["flipper"]["port"])
+    if not agent.connect():
+        logger.error("Flipper Zero connection failed")
+        print(f"{Colors.FAIL}Connection failed - check device and permissions{Colors.ENDC}")
         sys.exit(1)
+    return agent
+
+# === AI Components Setup ===
+def initialize_rag_system(args: argparse.Namespace) -> Optional[RAGRetriever]:
+    """Configure the RAG retrieval system if enabled"""
+    if args.no_rag:
+        logger.info("RAG system disabled via command line")
+        return None
     
-    # Initialize LLM Agent with RAG retriever
-    llm_agent = LLMAgent(config["llm"], rag_retriever)
+    print(f"{Colors.PURPLE}Initializing RAG knowledge base...{Colors.ENDC}")
+    rag = RAGRetriever()
+    return rag if rag.initialize() else None
+
+def configure_llm_agent(config: Dict[str, Any], rag: Optional[RAGRetriever],
+                       args: argparse.Namespace) -> LLMAgent:
+    """Initialize and configure the LLM agent with runtime parameters"""
+    agent = LLMAgent(config["llm"], rag)
     
-    # Override max history tokens if provided
     if args.max_history_tokens:
-        llm_agent.max_history_tokens = args.max_history_tokens
-        logger.info(f"Set max history tokens to {llm_agent.max_history_tokens}")
-        
-    # Override max recursion depth if provided
+        agent.max_history_tokens = args.max_history_tokens
+        logger.info(f"Set history token limit: {args.max_history_tokens}")
+    
     if args.max_recursion_depth:
-        llm_agent.max_recursion_depth = args.max_recursion_depth
-        logger.info(f"Set max recursion depth to {llm_agent.max_recursion_depth}")
+        agent.max_recursion_depth = args.max_recursion_depth
+        logger.info(f"Set maximum recursion depth: {args.max_recursion_depth}")
     
-    # Display connection information with white borders
-    
-    print(f"{Colors.GREEN}✓ Connected on {config['flipper']['port']}{Colors.ENDC}")
-    print(f"{Colors.GREEN}✓ Provider/model: {llm_agent.provider}/{llm_agent.model_name}{Colors.ENDC}")
-    print(f"{Colors.GREEN}✓ Context history: {llm_agent.max_history_tokens} tokens{Colors.ENDC}")
-    print(f"{Colors.GREEN}✓ Logs saved to: {LOG_FILE}")
-    print(f"\n{Colors.GREEN}{'-' * 60}{Colors.ENDC}")
-    
-    # No need to print feature status messages as they are always enabled
-    
-    print(f"{Colors.GREEN}✓ Flipper Zero Agent ready.{Colors.ENDC}")
-    print(f"{Colors.GREEN}✓ Enter your requests (type 'exit' to quit):{Colors.ENDC}")
-    
-    # Main interaction loop
+    return agent
+
+# === User Interface ===
+def display_connection_banner(config: Dict[str, Any], agent: LLMAgent):
+    """Show startup connection status and configuration"""
+    print(f"{Colors.GREEN}{'─' * 58}")
+    print(f"✓ Connected to Flipper Zero on {config['flipper']['port']:^35}")
+    print(f"✓ LLM Provider/Model: {agent.provider}/{agent.model_name:^35}")
+    print(f"✓ Context History: {agent.max_history_tokens} tokens{'':^20}")
+    print(f"✓ Log File: {LOG_FILE:^45}")
+    print(f"{'─' * 58}┘{Colors.ENDC}")
+    print(f"{Colors.GREEN}✓ Ready for commands (type '/help' for assistance){Colors.ENDC}")
+
+def run_interactive_loop(flipper_agent: FlipperZeroManager, llm_agent: LLMAgent):
+    """Manage the main user interaction loop"""
     try:
         while True:
-            # Check if we're in the middle of a task
-            if llm_agent.task_in_progress:
-                print(f"\n{Colors.BOLD}Continuing task: {llm_agent.task_description}{Colors.ENDC}")
-
-            # Get user input
-            # Add orange separator before input prompt
-            print(f"\n{Colors.BLUE}{'═' * 60}{Colors.ENDC}")
-            user_input = input(f"{Colors.BLUE}> {Colors.ENDC}{Colors.BLUE}")
-            print(Colors.ENDC, end="")  # Reset color after input
-            print(f"{Colors.BLUE}{'═' * 60}{Colors.ENDC}")
-            
-            # Handle escaped commands
-            if user_input.startswith('/'):
-                command = user_input[1:].lower()  # Remove the / and convert to lowercase
-                
-                # Handle different escaped commands
-                if command in ['exit', 'quit']:
-                    break
-                elif command == 'ask':
-                    print(f"\n{Colors.PURPLE}Switching to question mode...{Colors.ENDC}")
-                    # Here you would implement any special handling for 'ask' mode
-                    continue
-                elif command == 'help':
-                    print(f"\n{Colors.PURPLE}Available Commands:{Colors.ENDC}")
-                    print(f"  {Colors.BOLD}/exit, /quit{Colors.ENDC} - Exit the program")
-                    print(f"  {Colors.BOLD}/ask{Colors.ENDC} - Switch to question mode")
-                    print(f"  {Colors.BOLD}/help{Colors.ENDC} - Show this help message")
-                    continue
-                else:
-                    print(f"\n{Colors.PURPLE}Unknown command: {user_input}{Colors.ENDC}")
-                    print(f"Type {Colors.BOLD}/help{Colors.ENDC} for a list of available commands")
-                    continue
-                    
-            # Normal mode - exit commands without the slash
-            if user_input.lower() in ['exit', 'quit']:
-                break
-            
-            # Removed the separator here since it's now after task completion
-            
-            # Process the user input
-            process_user_request(user_input, flipper_agent, llm_agent, 0)
-    
+            handle_user_input(flipper_agent, llm_agent)
     except KeyboardInterrupt:
-        logger.info("User interrupted with Ctrl+C")
-        print("\nExiting...")
+        logger.info("Graceful shutdown initiated")
+        print(f"\n{Colors.ORANGE}Exiting gracefully...{Colors.ENDC}")
     except Exception as e:
-        logger.exception(f"Unexpected error: {str(e)}")
-        print(f"{Colors.FAIL}Unexpected error: {str(e)}{Colors.ENDC}")
+        logger.exception(f"Critical runtime error: {str(e)}")
+        print(f"{Colors.FAIL}Fatal error: {str(e)}{Colors.ENDC}")
     finally:
         flipper_agent.disconnect()
-        print("Disconnected from Flipper Zero")
-        logger.info("Session ended")
+        logger.info("Session terminated cleanly")
+
+def handle_user_input(flipper_agent: FlipperZeroManager, llm_agent: LLMAgent):
+    """Process a single user input iteration"""
+    if llm_agent.task_in_progress:
+        print(f"\n{Colors.BOLD}Continuing: {llm_agent.task_description}{Colors.ENDC}")
+    
+    user_input = get_user_input()
+    
+    if is_exit_command(user_input):
+        sys.exit(0)
+    
+    if handle_special_commands(user_input):
+        return
+    
+    process_user_request(user_input, flipper_agent, llm_agent, 0)
+
+def get_user_input() -> str:
+    """Display input prompt and retrieve user input"""
+    print(f"\n{Colors.BLUE}{'═' * 60}{Colors.ENDC}")
+    try:
+        return input(f"{Colors.BLUE}> {Colors.ENDC}").strip()
+    finally:
+        print(f"{Colors.BLUE}{'═' * 60}{Colors.ENDC}")
+
+def is_exit_command(input_text: str) -> bool:
+    """Check for termination commands"""
+    return input_text.lower() in ('exit', 'quit')
+
+def handle_special_commands(input_text: str) -> bool:
+    """Process slash commands and return True if handled"""
+    if not input_text.startswith('/'):
+        return False
+    
+    command = input_text[1:].lower()
+    command_handlers = {
+        'help': show_help,
+        'ask': switch_to_ask_mode,
+        'exit': lambda: sys.exit(0),
+        'quit': lambda: sys.exit(0)
+    }
+    
+    handler = command_handlers.get(command, handle_unknown_command)
+    handler()
+    return True
+
+def show_help():
+    """Display available commands"""
+    print(f"\n{Colors.GREEN}Available Commands:{Colors.ENDC}")
+    print(f"  {Colors.GREEN}/exit, /quit{Colors.ENDC} - Terminate the program")
+    print(f"  {Colors.GREEN}/ask{Colors.ENDC} - Enter question/answer mode")
+    print(f"  {Colors.GREEN}/help{Colors.ENDC} - Show this help message")
+
+def switch_to_ask_mode():
+    """Handle mode transition"""
+    print(f"\n{Colors.PURPLE}Switching to inquiry mode...{Colors.ENDC}")
+
+def handle_unknown_command(command: str):
+    """Handle invalid slash commands"""
+    print(f"{Colors.WARNING}Unknown command: /{command}{Colors.ENDC}")
+    print(f"Type {Colors.BOLD}/help{Colors.ENDC} for supported commands")
 
 if __name__ == "__main__":
     main()
