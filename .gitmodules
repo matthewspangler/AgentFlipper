@@ -1,0 +1,3 @@
+[submodule "pyFlipper"]
+	path = pyFlipper
+	url = https://github.com/wh00hw/pyFlipper.git
