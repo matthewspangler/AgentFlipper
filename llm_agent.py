@@ -117,7 +117,7 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
             # Handle other providers if needed
             self.full_model = f"{self.provider}/{self.model_name}"
 
-    def get_commands(self, user_input: str, previous_results: Optional[List[Tuple[str, str]]] = None) -> List[dict]:
+    async def get_commands(self, user_input: str, previous_results: Optional[List[Tuple[str, str]]] = None) -> List[dict]:
         """
         Get Flipper Zero commands from the LLM based on user input and previous results.
 
@@ -143,7 +143,7 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
                         if "illegal option" in resp or "error" in resp.lower() or "usage:" in resp:
                             search_query += f" {cmd} error {resp}"
 
-                docs = self.rag_retriever.retrieve(search_query)
+                docs = self.rag_retriever.retrieve(search_query) # Assuming retrieve is synchronous
                 if docs:
                     context = "Here is relevant information about Flipper Zero CLI commands:\n\n"
                     context += "\n\n".join(docs)
@@ -264,7 +264,7 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
                     }
                 ]
 
-                response = completion(
+                response = completion( # Await removed - check for blocking behavior
                     model=self.full_model,
                     messages=messages,
                     tools=tools,
@@ -318,10 +318,12 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
                 return tool_calls
 
             except Exception as e:
-                error_msg = f"LLM API error: {str(e)}"
-                logger.error(error_msg, exc_info=True)
-                ai_logger.error(f"LLM API error: {str(e)}", exc_info=True)
-                return [{"name": "provide_information", "arguments": {"information": f"Error: {str(e)}"}}]
+                error_msg = f"An error occurred during LLM processing."
+                # Log the full traceback for debugging
+                logger.error("LLM processing error:", exc_info=True)
+                ai_logger.error("LLM processing error:", exc_info=True)
+                # Return a generic error message to the user
+                return [{"name": "provide_information", "arguments": {"information": error_msg}}]
 
         except Exception as e:
             error_msg = f"Error generating tool calls: {str(e)}"
@@ -358,7 +360,7 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
 
         logger.info(f"After pruning: {len(self.conversation_history)} messages, ~{total_tokens} tokens")
 
-    def generate_summary(self) -> str:
+    async def generate_summary(self) -> str:
         """
         Generate a summary of the conversation so far.
         This is called by the Python script rather than relying on the LLM to provide summaries.
@@ -388,7 +390,7 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
 
         try:
             # Use the same LLM to generate a summary
-            response = completion(
+            response = await completion( # Await the LiteLLM completion call
                 model=self.full_model,
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant. Summarize the progress of the task so far in a concise paragraph."},

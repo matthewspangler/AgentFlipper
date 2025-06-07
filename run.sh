@@ -157,4 +157,4 @@ echo -e "\n${PURPLE}Starting Flipper Zero AI Agent...${NC}"
 if [ "$ENHANCED_PROMPT" = true ]; then
     echo -e "${PURPLE}With enhanced prompt (live documentation)${NC}"
 fi
-python "$SCRIPT_DIR/flipper_agent_with_rag.py" $CMD_ARGS
+python "$SCRIPT_DIR/flipper_agent_with_rag.py" $CMD_ARGS > "$SCRIPT_DIR/logs/flipper_agent_tui_$(date +'%Y%m%d_%H%M%S').log"

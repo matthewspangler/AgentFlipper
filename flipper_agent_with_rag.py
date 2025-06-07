@@ -23,7 +23,7 @@ from rag_retriever import RAGRetriever # Import the new RAGRetriever class
 from request_processor import process_user_request # Import the new process_user_request function
 from config_manager import load_config, parse_arguments, load_configuration, load_config_from_file, apply_command_line_overrides, handle_model_override # Import config management functions
 from hardware_integration import establish_flipper_connection, initialize_rag_system, configure_llm_agent # Import hardware integration functions
-from user_interface import display_connection_banner, run_interactive_loop, handle_user_input, get_user_input, is_exit_command, handle_special_commands, show_help, switch_to_ask_mode, handle_unknown_command # Import user interface functions
+from user_interface import run_interactive_loop # Import the main interactive loop
 
 # Setup logging
 LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
@@ -52,21 +52,6 @@ ai_file_handler = logging.FileHandler(AI_LOG_FILE)
 ai_file_handler.setFormatter(ai_formatter)
 ai_logger.addHandler(ai_file_handler)
 
-# Console handler will be added based on command line option
-
-
-# Import LiteLLM
-
-# Import LangChain
-
-# Default configuration
-
-# ANSI color codes for terminal output
-
-
-
-
-# === Main Execution Flow ===
 def main():
     """Orchestrate the application startup and shutdown"""
     args = parse_arguments()
@@ -74,28 +59,7 @@ def main():
     rag_retriever = initialize_rag_system(args)
     flipper_agent = establish_flipper_connection(config)
     llm_agent = configure_llm_agent(config, rag_retriever, args)
-    display_connection_banner(config, llm_agent)
     run_interactive_loop(flipper_agent, llm_agent)
-
-# === Configuration Management ===
-
-
-
-
-
-# === Hardware Integration ===
-
-# === AI Components Setup ===
-
-
-# === User Interface ===
-
-
-
-
-
-
-
 
 if __name__ == "__main__":
     main()
