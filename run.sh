@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Flipper Zero AI Agent Run Script
+# AgentFlipper Run Script
 # This script activates the virtual environment, runs the doc downloader if needed,
 # and then runs the Flipper Zero AI Agent
 
@@ -115,7 +115,7 @@ VECTOR_STORE_PATH="$DOCS_DIR/flipper_cli_faiss"
 if [ "$SKIP_DOCS" = false ] && [ "$NO_RAG" = false ]; then
     if [ ! -d "$VECTOR_STORE_PATH" ]; then
         echo -e "\n${GREEN}Documentation vector store not found. Downloading and processing documentation...${NC}"
-        python "$SCRIPT_DIR/flipper_docs_loader.py"
+        python "$SCRIPT_DIR/docs_loader.py"
     else
         echo -e "\n${GREEN}Documentation vector store found. Skipping download.${NC}"
         echo -e "${GREEN}(Use --skip-docs to skip this check)${NC}"
@@ -153,8 +153,8 @@ if [ "$CONSOLE_LOG" = true ]; then
 fi
 
 # Run the agent
-echo -e "\n${PURPLE}Starting Flipper Zero AI Agent...${NC}"
+echo -e "\n${PURPLE}Starting AgentFlipper...${NC}"
 if [ "$ENHANCED_PROMPT" = true ]; then
     echo -e "${PURPLE}With enhanced prompt (live documentation)${NC}"
 fi
-python "$SCRIPT_DIR/flipper_agent_with_rag.py" $CMD_ARGS
+python "$SCRIPT_DIR/main.py" $CMD_ARGS > "$SCRIPT_DIR/logs/agent_flipper_tui_$(date +'%Y%m%d_%H%M%S').log"

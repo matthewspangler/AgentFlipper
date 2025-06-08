@@ -8,3 +8,5 @@ beautifulsoup4>=4.12.2
 requests>=2.31.0
 faiss-cpu>=1.7.4
 # PyFlipper is included as a submodule
+textual>=0.60.0
+textual>=0.60.0
