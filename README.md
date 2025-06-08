@@ -1,3 +1,5 @@
+<img src="mascot.png" alt="drawing" width="200"/>
+
 # AgentFlipper
 
 A Python solution that connects your Flipper Zero any LLM service including local Ollama, allowing you to control your Flipper Zero using natural language commands with context-aware conversations.
