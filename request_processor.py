@@ -8,7 +8,7 @@ from typing import Optional, List, Tuple
 from hardware_manager import FlipperZeroManager
 from llm_agent import LLMAgent
 
-logger = logging.getLogger("FlipperAgent")
+logger = logging.getLogger("AgentFlipper")
 
 async def process_user_request(app_instance, user_input: str, flipper_agent: FlipperZeroManager, llm_agent: LLMAgent, recursion_depth: int = 0):
     """

@@ -20,7 +20,7 @@ from hardware_manager import FlipperZeroManager
 from llm_agent import LLMAgent
 from request_processor import process_user_request
 
-logger = logging.getLogger("FlipperAgent")
+logger = logging.getLogger("AgentFlipper")
 
 # Define process_request_in_worker as a standalone async function
 # It now accepts the app_instance directly for UI updates
@@ -53,7 +53,7 @@ async def process_request_in_worker(
 
 
 class AgentFlipper(App):
-    """Textual application for the Flipper Zero AI Agent."""
+    """Textual application for the AgentFlipper."""
 
     CSS = """
     /* qFlipper-like Theme with Flipper LED Highlights */

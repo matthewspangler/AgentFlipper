@@ -18,7 +18,7 @@ except ImportError:
 Base class for hardware device management
 """
 
-logger = logging.getLogger("FlipperAgent")
+logger = logging.getLogger("AgentFlipper")
 
 class Colors:
     HEADER = '\033[95m'

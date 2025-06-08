@@ -14,7 +14,7 @@ A Python solution that connects your Flipper Zero any LLM service including loca
 - Intelligently executes multi-step tasks
 - Comprehensive logging for debugging
 
-![AgentFlipper Example](./flipper-example.gif)
+![AgentFlipper Example](./screenshot.png)
 
 For technical details, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
@@ -60,13 +60,13 @@ ollama pull qwen2.5-coder:14b
 1. If you don't use the run.sh script, you will need to build the documentation database (only needed once):
 
 ```bash
-./flipper_docs_loader.py
+./docs_loader.py
 ```
 
 2. And then you can run the agent:
 
 ```bash
-./flipper_agent_with_rag.py
+./main.py
 ```
 
 3. Enter your commands in natural language:

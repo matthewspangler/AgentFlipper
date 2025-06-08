@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Flipper Zero AI Agent using PyFlipper and RAG
+AgentFlipper using PyFlipper and RAG
 
 This script connects the Flipper Zero to LiteLLM (configured to use local Ollama)
 using the PyFlipper library as a backend, allowing users to interact with the
@@ -33,12 +33,12 @@ class ConfigError(Exception):
 # Setup logging
 LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
-LOG_FILE = os.path.join(LOG_DIR, f"flipper_agent_{time.strftime('%Y%m%d_%H%M%S')}.log")
+LOG_FILE = os.path.join(LOG_DIR, f"agent_flipper_{time.strftime('%Y%m%d_%H%M%S')}.log")
 from hardware_manager import HardwareManager # Import the new HardwareManager class
-AI_LOG_FILE = os.path.join(LOG_DIR, f"flipper_agent_ai_{time.strftime('%Y%m%d_%H%M%S')}.log")
+AI_LOG_FILE = os.path.join(LOG_DIR, f"agent_flipper_ai_{time.strftime('%Y%m%d_%H%M%S')}.log")
 
 # Configure main logger - default to file only
-logger = logging.getLogger("FlipperAgent")
+logger = logging.getLogger("AgentFlipper")
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -48,7 +48,7 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 # Configure AI response logger
-ai_logger = logging.getLogger("FlipperAgentAI")
+ai_logger = logging.getLogger("AgentFlipperAI")
 ai_logger.setLevel(logging.INFO)
 ai_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -87,7 +87,7 @@ def load_config_from_file(config_path: str) -> Dict[str, Any]:
 
 def load_from_default_locations() -> Dict[str, Any]:
     """Load configuration from default locations: user home dir or project dir."""
-    user_config_path = Path(os.path.expanduser("~/.config/flipper_agent/config.yaml"))
+    user_config_path = Path(os.path.expanduser("~/.config/agent_flipper/config.yaml"))
     project_config_path = Path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml"))
 
     config_data = {}
@@ -124,7 +124,7 @@ def load_from_default_locations() -> Dict[str, Any]:
 def parse_arguments() -> argparse.Namespace:
     """Parse command-line arguments."""
     logger.debug("Parsing command-line arguments.")
-    parser = argparse.ArgumentParser(description='Flipper Zero AI Agent using PyFlipper and RAG')
+    parser = argparse.ArgumentParser(description='AgentFlipper using PyFlipper and RAG')
     parser.add_argument('--port', type=str, help='Serial port for Flipper Zero')
     parser.add_argument('--config', type=str, help='Path to custom config file')
     parser.add_argument('--model', type=str, help='LLM model to use (format: provider/model or just model name)')

@@ -17,8 +17,8 @@ from pathlib import Path
 from colors import Colors
 from rag_retriever import RAGRetriever
 
-logger = logging.getLogger("FlipperAgent")
-ai_logger = logging.getLogger("FlipperAgentAI")
+logger = logging.getLogger("AgentFlipper")
+ai_logger = logging.getLogger("AgentFlipperAI")
 
 def estimate_tokens(text: str) -> int:
     """
@@ -29,7 +29,7 @@ def estimate_tokens(text: str) -> int:
 
 
 class LLMAgent:
-    """Class to interact with the LLM via LiteLLM"""
+    """Class for the LLM Agent."""
 
     def __init__(self, config: Dict[str, Any], rag_retriever: RAGRetriever = None):
         """Initialize the LLM agent with the given configuration"""

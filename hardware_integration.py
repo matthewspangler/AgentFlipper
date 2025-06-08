@@ -12,7 +12,7 @@ from hardware_manager import FlipperZeroManager
 from rag_retriever import RAGRetriever
 from llm_agent import LLMAgent
 
-logger = logging.getLogger("FlipperAgent")
+logger = logging.getLogger("AgentFlipper")
 
 def establish_flipper_connection(config: Dict[str, Any]) -> FlipperZeroManager:
     """Initialize and validate Flipper Zero connection."""
