@@ -138,9 +138,10 @@ class FlipperZeroManager(HardwareManager):
 
             try:
                 # Display sent command using the app_instance
-                app_instance.display_message(f"[green]{'─' * 50}[/]")
-                app_instance.display_message(f"[green]✓ Sent command -> {cmd}[/]")
-                app_instance.display_message(f"[green]{'─' * 50}[/]")
+                # Use fg-orange class for command messages
+                app_instance.display_message(f"{'─' * 79}")
+                app_instance.display_message(f"[class='fg-orange']✓ Sent command -> {cmd}[/class]")
+                app_instance.display_message(f"{'─' * 79}")
 
 
                 # Execute command and get response - AWAITING the async send_command
@@ -148,22 +149,24 @@ class FlipperZeroManager(HardwareManager):
                 results.append((cmd, response))
 
                 # Display the response with clearer formatting using the app_instance
-                app_instance.display_message(f"[orange]{'─' * 50}[/]")
-                app_instance.display_message(f"[orange]# Device Response:[/]") # Removed erroneous comment
-                app_instance.display_message(f"[bold orange]{response}[/]")
+                # Use fg-orange class for response messages
+                app_instance.display_message(f"{'─' * 79}")
+                app_instance.display_message(f"[class='fg-orange']# Device Response:[/class]") # Removed erroneous comment
+                app_instance.display_message(f"[class='fg-orange']{response}[/class]")
 
                 # Add single separator between agent actions using the app_instance
-                app_instance.display_message(f"[orange]{'─' * 50}[/]") # Removed erroneous comment
+                app_instance.display_message(f"{'─' * 79}")
 
             except Exception as e:
                 # Catch exceptions from send_command and record the error
                 error_msg = f"Error executing command '{cmd}': {str(e)}"
                 logger.error(error_msg)
                 results.append((cmd, f"ERROR: {error_msg}"))
-                app_instance.display_message(f"[red]{'─' * 50}[/]")
-                app_instance.display_message(f"[red]# Device Response:[/]") # Keeping original comment for now
-                app_instance.display_message(f"[bold red]ERROR: {error_msg}[/]")
-                app_instance.display_message(f"[red]{'─' * 50}[/]") # Keeping original comment for now
+                # Keep error messages red for visibility
+                app_instance.display_message(f"[red]{'─' * 79}[/red]")
+                app_instance.display_message(f"[red]# Device Response:[/red]")
+                app_instance.display_message(f"[bold red]ERROR: {error_msg}[/bold red]")
+                app_instance.display_message(f"[red]{'─' * 79}[/red]")
 
 
         logger.info(f"Executed {len(results)} commands")

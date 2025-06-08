@@ -33,9 +33,15 @@ class LLMAgent:
 
     def __init__(self, config: Dict[str, Any], rag_retriever: RAGRetriever = None):
         """Initialize the LLM agent with the given configuration"""
-        self.provider = config.get("provider", "ollama")
-        self.model_name = config.get("model", "qwen2.5-coder:14b")
-        self.api_base = config.get("api_base", "http://localhost:11434")
+        self.config = config # Store the raw config dictionary
+
+        # Safely get llm config, defaulting to an empty dict if not present
+        llm_config = config.get("llm", {})
+
+        self.provider = llm_config.get("provider", "ollama")
+        self.model_name = llm_config.get("model", "qwen2.5-coder:14b")
+        self.api_base = llm_config.get("api_base", "http://localhost:11434")
+        self.max_history_tokens = llm_config.get("max_history_tokens", 2000)
 
         # Fixed system prompt with explicit completion requirements
         self.system_prompt = """You are an assistant controlling a Flipper Zero device through its CLI.
@@ -100,13 +106,13 @@ vibro, update, bt, storage, bad_usb, backlight, led, and others.
 IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
 
         # User configurable prompt that adds to the system prompt
-        self.user_prompt = config.get("user_prompt", "")
+        self.user_prompt = llm_config.get("user_prompt", "")
         self.rag_retriever = rag_retriever
 
         # Initialize conversation history
         self.conversation_history = []
-        self.max_history_tokens = config.get("max_history_tokens", 2000)
-        self.max_recursion_depth = config.get("max_recursion_depth", 10)
+        # Get max_recursion_depth from llm_config
+        self.max_recursion_depth = llm_config.get("max_recursion_depth", 10)
         self.task_in_progress = False
         self.task_description = ""
 
@@ -130,7 +136,9 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
         """
         try:
             # Prepare API parameters
-            api_params = {"api_base": self.api_base}
+            # Get api_base from the config dict
+            llm_config = self.config.get("llm", {})
+            api_params = {"api_base": llm_config.get("api_base", "http://localhost:11434")}
 
             # Retrieve relevant documentation if RAG is enabled
             context = ""
@@ -398,7 +406,9 @@ IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
                 ],
                 temperature=0.3,
                 max_tokens=150,
-                api_base=self.api_base
+                # Get api_base from the config dict
+                # Move this logic outside the completion call
+                api_base=self.config.get("llm", {}).get("api_base", "http://localhost:11434")
             )
 
             # Extract the response content

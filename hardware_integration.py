@@ -15,11 +15,20 @@ from llm_agent import LLMAgent
 logger = logging.getLogger("FlipperAgent")
 
 def establish_flipper_connection(config: Dict[str, Any]) -> FlipperZeroManager:
-    """Initialize and validate Flipper Zero connection"""
-    agent = FlipperZeroManager(port=config["flipper"]["port"])
+    """Initialize and validate Flipper Zero connection."""
+    # Access config directly, with checks
+    flipper_config = config.get("flipper", {})
+    port = flipper_config.get("port") # Use .get for safety
+
+    if not port:
+        logger.error("Flipper port is not specified in the configuration.")
+        print(f"{Colors.FAIL}Error: Flipper port is not specified in the configuration.{Colors.ENDC}")
+        sys.exit(1)
+
+    agent = FlipperZeroManager(port=port)
     if not agent.connect():
-        logger.error("Flipper Zero connection failed")
-        print(f"{Colors.FAIL}Connection failed - check device and permissions{Colors.ENDC}")
+        logger.error(f"Flipper Zero connection failed on port {port}")
+        print(f"{Colors.FAIL}Connection failed on port {port} - check device and permissions{Colors.ENDC}")
         sys.exit(1)
     return agent
 
@@ -35,15 +44,12 @@ def initialize_rag_system(args: argparse.Namespace) -> Optional[RAGRetriever]:
 
 def configure_llm_agent(config: Dict[str, Any], rag: Optional[RAGRetriever],
                        args: argparse.Namespace) -> LLMAgent:
-    """Initialize and configure the LLM agent with runtime parameters"""
-    agent = LLMAgent(config["llm"], rag)
+    """Initialize and configure the LLM agent with runtime parameters."""
+    # Pass the raw config dictionary to LLMAgent
+    agent = LLMAgent(config, rag)
 
-    if args.max_history_tokens:
-        agent.max_history_tokens = args.max_history_tokens
-        logger.info(f"Set history token limit: {args.max_history_tokens}")
-
-    if args.max_recursion_depth:
-        agent.max_recursion_depth = args.max_recursion_depth
-        logger.info(f"Set maximum recursion depth: {args.max_recursion_depth}")
+    # These overrides were previously applied by ConfigManager.
+    # LLMAgent will now access them directly from the passed config dict.
+    # No changes needed here, as the config dict passed already has overrides applied.
 
     return agent

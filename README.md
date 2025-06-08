@@ -1,4 +1,4 @@
-# Flipper Zero AI Agent
+# AgentFlipper
 
 A Python solution that connects your Flipper Zero any LLM service including local Ollama, allowing you to control your Flipper Zero using natural language commands with context-aware conversations.
 
@@ -14,7 +14,7 @@ A Python solution that connects your Flipper Zero any LLM service including loca
 - Intelligently executes multi-step tasks
 - Comprehensive logging for debugging
 
-![screenshot of flipper agent](./screenshot.png)
+![AgentFlipper Example](./flipper-example.gif)
 
 For technical details, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
@@ -99,6 +99,11 @@ The config file is loaded from:
 - Task queue with evaluation loop
 - No freeze in textual
 - Analyze data that is not serial commands
+- Fix token issue
+- Smarter context management needed
+- Automated testing needed
+- Cannot copy/paste into terminal
+- Get the theming right
 - RAG more documentation and hacking tutorials
 
 ## Licensing
