@@ -42,6 +42,16 @@ async def process_user_request(app_instance, user_input: str, flipper_agent: Fli
         await app_instance.display_message(f"\nProgress Summary:")
         await app_instance.display_message(f"{summary}\n")
 
+    # Check device connection before proceeding
+    if not flipper_agent.is_connected:
+        logger.error("Device is not connected. Attempting reconnection...")
+        reconnect_success = flipper_agent.connect()
+        if not reconnect_success:
+            await app_instance.display_message(f"[bold red]ERROR: Cannot connect to Flipper Zero device. Please check your connection and try again.[/bold red]")
+            return
+        else:
+            await app_instance.display_message(f"[green]Successfully reconnected to Flipper Zero.[/green]")
+    
     # Get tool calls from LLM
     tool_calls = await llm_agent.get_commands(user_input) # Await the async LLM call
 

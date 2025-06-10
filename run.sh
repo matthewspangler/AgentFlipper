@@ -108,53 +108,44 @@ fi
 echo -e "\n${GREEN}Activating virtual environment...${NC}"
 source "$VENV_DIR/bin/activate"
 
-# Check if documentation has been downloaded, and download if needed
-DOCS_DIR="$SCRIPT_DIR/docs"
-VECTOR_STORE_PATH="$DOCS_DIR/flipper_cli_faiss"
 
-if [ "$SKIP_DOCS" = false ] && [ "$NO_RAG" = false ]; then
-    if [ ! -d "$VECTOR_STORE_PATH" ]; then
+# Check if documentation has been downloaded, and download if needed
+# Only check if RAG is NOT explicitly disabled via --no-rag passed to main.py
+# and download is NOT skipped via script options (--skip-docs, --no-rag-download).
+DOCS_DIR="$SCRIPT_DIR/docs"
+VECTOR_STORE_PATH="$DOCS_DIR/flipper_cli_faiss" # Assuming this is the path used by docs_loader.py
+
+# Check if --no-rag is among the arguments passed to the script *before* passing them to main.py
+# This allows the script to potentially skip the doc download if RAG is disabled in main.py.
+NO_RAG_FLAG_PRESENT_FOR_MAIN=false
+for arg in "$@"; do
+    if [ "$arg" == "--no-rag" ]; then
+        NO_RAG_FLAG_PRESENT_FOR_MAIN=true
+        break
+    fi
+done
+
+
+if [ "$SKIP_DOCS" = false ] && [ "$NO_RAG_FLAG_PRESENT_FOR_MAIN" = false ]; then
+     if [ ! -d "$VECTOR_STORE_PATH" ]; then
         echo -e "\n${GREEN}Documentation vector store not found. Downloading and processing documentation...${NC}"
+        # Need to run docs_loader.py with python from the activated venv
         python "$SCRIPT_DIR/docs_loader.py"
     else
-        echo -e "\n${GREEN}Documentation vector store found. Skipping download.${NC}"
-        echo -e "${GREEN}(Use --skip-docs to skip this check)${NC}"
+        echo -e "\n${GREEN}Documentation vector store found. Skipping download check.${NC}"
+        echo -e "${GREEN}(Use -s, --skip-docs, or --no-rag-download script options to skip this check)${NC}"
     fi
+elif [ "$SKIP_DOCS" = true ]; then
+    echo -e "\n${YELLOW}Documentation download check skipped by script options.${NC}"
+elif [ "$NO_RAG_FLAG_PRESENT_FOR_MAIN" = true ]; then
+    echo -e "\n${YELLOW}--no-rag flag detected in arguments for main.py. Skipping documentation download check.${NC}"
 fi
 
-# Build command arguments
-CMD_ARGS=""
-if [ -n "$PORT" ]; then
-    CMD_ARGS="$CMD_ARGS --port $PORT"
-fi
-
-if [ -n "$MODEL" ]; then
-    CMD_ARGS="$CMD_ARGS --model $MODEL"
-fi
-
-if [ "$NO_RAG" = true ]; then
-    CMD_ARGS="$CMD_ARGS --no-rag"
-fi
-
-if [ "$ENHANCED_PROMPT" = true ]; then
-    CMD_ARGS="$CMD_ARGS --enhanced-prompt"
-fi
-
-if [ -n "$MAX_HISTORY_TOKENS" ]; then
-    CMD_ARGS="$CMD_ARGS --max-history-tokens $MAX_HISTORY_TOKENS"
-fi
-
-if [ -n "$LOG_LEVEL" ]; then
-    CMD_ARGS="$CMD_ARGS --log-level $LOG_LEVEL"
-fi
-
-if [ "$CONSOLE_LOG" = true ]; then
-    CMD_ARGS="$CMD_ARGS --console-log"
-fi
 
 # Run the agent
 echo -e "\n${PURPLE}Starting AgentFlipper...${NC}"
-if [ "$ENHANCED_PROMPT" = true ]; then
-    echo -e "${PURPLE}With enhanced prompt (live documentation)${NC}"
-fi
-python "$SCRIPT_DIR/main.py" $CMD_ARGS > "$SCRIPT_DIR/logs/agent_flipper_tui_$(date +'%Y%m%d_%H%M%S').log"
+# Execute main.py directly
+# Pass all remaining arguments ($@) directly to the main.py script
+python main.py "$@" > "$SCRIPT_DIR/logs/agent_flipper_tui_$(date +'%Y%m%d_%H%M%S').log"
+
+# The script finishes here after main.py exits

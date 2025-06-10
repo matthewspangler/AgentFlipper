@@ -142,3 +142,28 @@ The system uses two key shell scripts:
 - FAISS (vector store)
 - HuggingFace Embeddings (text embeddings)
 - LiteLLM (LLM API abstraction)
+## TODO
+
+### AgentFlipper Loop Pattern
+
+```mermaid
+graph TD
+    B(Receive User Input) --> B1(Add User Input to Task Queue)
+    B1 --> C(Initialize/Update Context Buffer)
+    C --> D{Loop: any more tasks?}
+    D -- No --> E_F(Give Task to LLM for Planning)
+    E_F --> H{Plan Valid?}
+    H -- Yes --> I(Add Plan to Task Queue)
+    I --> J{Task Queue Empty?}
+    J -- No --> K(Get Next Task from Queue)
+    K --> L(Execute Task)
+    L --> MN(Give Task Result to LLM for Planning)
+    MN --> OQ{LLM: Suggest Next Action or Task Complete?}
+    OQ -- Suggests Next Action --> S(Add Next Action to Task Queue)
+    S --> J
+    OQ -- Signals Task Complete --> D
+    J -- Yes --> D
+    H -- No --> W(Handle Invalid Plan)
+    W --> D
+    D -- Yes --> X[End]
+```

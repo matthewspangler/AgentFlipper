@@ -98,7 +98,10 @@ The config file is loaded from:
 2. `./config.yaml` (project directory)
 
 ## TODO
+- rename execute_commands to serial_commands
 - Task queue with evaluation loop
+- Validate planning prompts
+- Re-add divider lines between tasks/subtasks
 - No freeze in textual
 - Analyze data that is not serial commands
 - Fix token issue
@@ -107,6 +110,14 @@ The config file is loaded from:
 - Cannot copy/paste into terminal
 - Get the theming right
 - RAG more documentation and hacking tutorials
+- Window resizing is broken
+- Clean up obsolete code and redundant comments
+- Test that planning LLM is capable of inserting tasks *in between* other tasks
+- Ask 8K AI to validate tasks
+- Change output to have standard terms, like requests, tasks, plans, actions, etc.
+- Provide live view of task list in sidebar like treemacs
+- Add proper human-in-the-middle
+- Make tool calling extensible via plugins
 
 ## Licensing
 
