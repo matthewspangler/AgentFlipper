@@ -1,7 +1,8 @@
 import re
 import asyncio
 import json
-import logging # Import logging
+import logging
+import time
 from typing import Dict, Any, Optional, List, Union
 
 # Get the AI logger configured in main.py
@@ -10,8 +11,8 @@ ai_logger = logging.getLogger("AgentFlipperAI")
 # Assuming AgentState is available
 # from ..agent_loop.agent_state import AgentState
 
-# Assuming litellm is installed
-# from litellm import completion
+# Import litellm for LLM API calls
+from litellm import completion, acompletion # Import acompletion
 
 class UnifiedLLMAgent:
     def __init__(self, config: Dict[str, Any], agent_state: Any): # Use Any for AgentState for now
@@ -30,11 +31,29 @@ class UnifiedLLMAgent:
         # In a real implementation, load this from prompts.py or config
         # For now, hardcode or load a basic one
         return """You are an AI assistant that helps control a Flipper Zero device via its command-line interface.
-        Interpret the user's requests into specific Flipper Zero CLI commands.
-        You operate in a Plan, Act, and Reflect cycle.
-        When asked to plan, provide a JSON array of actions (tool calls).
-        When asked to reflect on a result, evaluate the outcome and decide the next step: provide new actions, signal task complete, or indicate that human input is required.
-        Use the available tools as instructed.
+        Your primary function is to interpret user requests and translate them into precise Flipper Zero CLI commands that are then executed via a serial connection using the pyFlipper library.
+
+        **CRITICAL INSTRUCTIONS:**
+
+        1.  **Prioritize Provided Documentation (RAG Context):** Always refer to and prioritize the provided Flipper Zero CLI documentation when determining the correct command and syntax for a user's request. The commands in this documentation are the ONLY valid commands you can execute.
+        2.  **Use `execute_commands` Tool:** To send commands to the Flipper Zero, you MUST use the `execute_commands` tool. Provide the exact, correct CLI command (e.g., `led bl 255`, not `power backlight on`) as found in the documentation.
+        3.  **Analyze Command Results (Reflection):** After a command is executed, you will receive the device's response in the reflection step. You MUST analyze this response.
+            *   If the response indicates success, you may proceed to the next step or mark the task complete if the overall goal is achieved.
+            *   If the response indicates an error (e.g., "Usage:", "ERROR:", "illegal option"), the command failed. You MUST NOT mark the task complete. Instead, you should:
+                *   Re-evaluate the command based on the documentation and the error message.
+                *   If possible, generate a corrected command using `execute_commands`.
+                *   If unsure how to correct the command or the error is severe, use the `ask_human` tool to request assistance.
+        4.  **Plan, Act, Reflect Cycle:** You operate in a Plan, Act, and Reflect cycle.
+            *   **Plan:** Generate a JSON array of tool calls to achieve the user's request.
+            *   **Act:** The system executes your tool calls.
+            *   **Reflect:** You analyze the results and determine the next step (add more tasks, ask human, mark complete).
+        5.  **Use Available Tools:** You have the following tools:
+            *   `execute_commands`: For sending CLI commands to the Flipper Zero serial.
+            *   `provide_information`: For displaying helpful text to the user.
+            *   `ask_human`: For asking the user questions or requesting help.
+            *   `mark_task_complete`: To signal that the *overall* user request is fully satisfied.
+
+        **Remember:** Your goal is to successfully execute the user's intent on the Flipper Zero by generating correct commands based on the documentation and reacting appropriately to command results. Do not invent commands or guess syntax.
         """
         
     async def create_initial_plan(self, task_description: str) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
@@ -151,89 +170,292 @@ class UnifiedLLMAgent:
         return action # Should be List[Dict] or Dict with "type" key
 
     async def _call_llm(self, prompt: str, history: Optional[List[Dict[str, str]]] = None) -> Any:
-        """Make the actual LLM API call (placeholder)."""
-        # This is where litellm.completion would be called
-        # Need to format prompt and history into messages list
-        # Need to handle API key, base URL, model name from config
-        # Need to handle potential errors from the API call
-        print(f"--- Calling LLM ---")
-        print(f"Prompt:\n{prompt}")
-        # print(f"History:\n{json.dumps(history, indent=2)}") # If history is used
-        print(f"-------------------")
-
-        # Placeholder: In a real implementation, await litellm.completion(...)
-        # For now, return dummy responses for testing the loop structure
-        await asyncio.sleep(1) # Simulate LLM latency
-
-        # Enhanced dummy responses for development:
-       # Enhanced dummy responses for development based on prompt content:
-        # Enhanced dummy responses for development based on prompt content:
-        if "Reflect on a task result" in prompt.lower():
-             # Dummy reflection: return a dictionary indicating next action
-            ai_logger.debug("Dummy LLM: Responding to reflection prompt with 'task_complete'")
-            return '{"type": "task_complete"}' # Return a JSON string representing a dictionary
-        elif "Based on this human input" in prompt.lower():
-             # Dummy response to human input: signal complete
-            ai_logger.debug("Dummy LLM: Responding to human input prompt with 'task_complete'")
-            return '{"type": "task_complete"}' # Return a JSON string representing a dictionary
+        """
+        Make an API call to the LLM using LiteLLM.
+        
+        Args:
+            prompt: The prompt text to send to the LLM
+            history: Optional conversation history to provide context
+            
+        Returns:
+            Response text from LLM (typically JSON string)
+        """
+        ai_logger.debug(f"Preparing LLM call with {self.provider}/{self.model}")
+        
+        # Format messages for the LLM
+        messages = []
+        
+        # Add system prompt
+        messages.append({"role": "system", "content": self.system_prompt})
+        
+        # Add conversation history if provided
+        if history:
+            messages.extend(history)
+        
+        # Add the current user prompt
+        messages.append({"role": "user", "content": prompt})
+        
+        # Log the prompt for debugging (but truncate very long prompts)
+        truncated_prompt = prompt[:500] + "..." if len(prompt) > 500 else prompt
+        ai_logger.debug(f"LLM Prompt: {truncated_prompt}")
+        
+        # Define the tool schema for function calling
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "execute_commands",
+                    "description": "Execute commands on the Flipper Zero device",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "commands": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of commands to execute on the Flipper Zero"
+                            }
+                        },
+                        "required": ["commands"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "provide_information",
+                    "description": "Provide information to the user",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "information": {
+                                "type": "string",
+                                "description": "Information to display to the user"
+                            }
+                        },
+                        "required": ["information"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "ask_human",
+                    "description": "Ask the human user a question",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "question": {
+                                "type": "string",
+                                "description": "Question to ask the human"
+                            }
+                        },
+                        "required": ["question"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "mark_task_complete",
+                    "description": "Mark the current task as complete",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            }
+        ]
+        
+        # Set up API parameters from config
+        llm_config = self.config.get("llm", {})
+        api_params = {
+            "api_base": self.api_base or llm_config.get("api_base"),
+            "temperature": llm_config.get("temperature", 0.3),
+            "max_tokens": llm_config.get("max_tokens", 1000),
+            "timeout": llm_config.get("timeout", 60)
+        }
+        
+        # Clean up None values
+        api_params = {k: v for k, v in api_params.items() if v is not None}
+        
+        # Format the full model name
+        if self.provider == "ollama":
+            full_model = f"ollama/{self.model}"
         else:
-            # Assume it's a planning request (initial plan or adding tasks after reflection)
-            ai_logger.debug("Dummy LLM: Assuming planning prompt, returning a plan.")
-            if "backlight" in prompt.lower():
-                return '[{"action": "execute_commands", "parameters": {"commands": ["led bl 255"]}}, {"action": "provide_information", "parameters": {"message": "Backlight turned on successfully."}}]' # JSON string representing a list
+            full_model = f"{self.provider}/{self.model}"
+            
+        start_time = time.time()
+        try:
+            # Make the actual API call with error handling
+            ai_logger.info(f"Making LLM call to {full_model}")
+            
+            # Debug logging for API parameters
+            ai_logger.debug(f"API Parameters: {json.dumps(api_params, default=str)}")
+            
+            response = await acompletion( # Changed to acompletion for asynchronous call
+                model=full_model,
+                messages=messages,
+                tools=tools,
+                tool_choice="auto",
+                **api_params
+            )
+            
+            # Calculate and log latency
+            latency = time.time() - start_time
+            ai_logger.info(f"LLM call completed in {latency:.2f}s")
+            
+            # Log the raw response structure (abbreviated) for debugging
+            ai_logger.debug(f"Raw LLM response type: {type(response)}")
+            
+            # Process response based on what the LLM returned
+            content = ""
+            tool_calls = []
+            
+            if hasattr(response, 'choices') and len(response.choices) > 0:
+                message = response.choices[0].message
+                
+                # Handle tool calls if present
+                if hasattr(message, 'tool_calls') and message.tool_calls:
+                    tool_calls_output = []
+                    for call in message.tool_calls:
+                        try:
+                            args = json.loads(call.function.arguments)
+                            tool_calls_output.append({
+                                "action": call.function.name,
+                                "parameters": args
+                            })
+                        except json.JSONDecodeError as e:
+                            ai_logger.error(f"Failed to parse tool arguments: {e}", exc_info=True)
+                    
+                    # Return a structured JSON response
+                    content = json.dumps(tool_calls_output)
+                    ai_logger.info(f"Extracted {len(tool_calls_output)} tool calls from LLM response")
+                    
+                # Handle standard text completion if no tool calls
+                elif hasattr(message, 'content') and message.content:
+                    content = message.content
+                    ai_logger.info(f"Extracted text content from LLM response (length: {len(content)})")
+                
+                # Fall back to string representation if needed
+                else:
+                    content = str(message)
+                    ai_logger.warning(f"Using string representation of message: {content[:100]}...")
             else:
-                # Default planning response - always return a valid plan format
-                return '[{"action": "execute_commands", "parameters": {"commands": ["info"]}}, {"action": "provide_information", "parameters": {"message": "Command executed."}}]' # JSON string representing a list
+                # Handle unexpected response format
+                content = str(response)
+                ai_logger.warning(f"Unexpected response format. Using string representation: {content[:100]}...")
+            
+            return content
+            
+        except Exception as e:
+            # Log detailed error information
+            error_duration = time.time() - start_time
+            ai_logger.error(f"Error calling LLM after {error_duration:.2f}s: {str(e)}", exc_info=True)
+            
+            ai_logger.warning("LLM call failed! Using generic fallback response")
+            return '[{"action": "provide_information", "parameters": {"information": "I encountered an error connecting to the LLM. Please try again or check your connection."}}]'
 
 
     def _parse_plan_from_response(self, response_text: str) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
         """Extract structured plan (list of actions) from LLM text response."""
         ai_logger.debug(f"Attempting to parse LLM plan response:\n{response_text}")
-        # This is a critical parsing step. Need to handle LLM responses
-        # that might include conversational text before or after the JSON.
-        # Use regex or careful string parsing to extract the JSON array.
-        # Use regex to find the JSON array within the response text.
-        # LLMs can sometimes include conversational text or formatting around the JSON output,
-        # so direct json.loads() may fail. This regex attempts to extract the JSON array string.
 
-
+        # Check if response is already a properly formatted JSON string
         try:
-            # Attempt to find and parse JSON array from the response text
-            # Attempt to find and parse JSON array from the response text
-            # Using a greedy match (`.*`) to capture the whole array assuming no nested top-level arrays.
+            # First try direct parsing - this should work with our new _call_llm implementation
+            # which returns properly formatted JSON strings from tool calls
+            parsed_response = json.loads(response_text)
+            
+            # Handle case where parsed response is a list of actions (typical plan)
+            if isinstance(parsed_response, list):
+                ai_logger.info(f"Successfully parsed plan as JSON array with {len(parsed_response)} actions.")
+                
+                # Normalize action format: ensure we use "action" key consistently
+                # (sometimes the model returns "name" instead of "action")
+                for item in parsed_response:
+                    if "action" not in item and "name" in item:
+                        item["action"] = item.pop("name")
+                        ai_logger.debug(f"Renamed 'name' key to 'action' for consistent format")
+                        
+                # Handle special case: if there's an ask_human action, convert to awaiting_human_input format
+                for item in parsed_response:
+                    if item.get("action") == "ask_human":
+                        ai_logger.info("Converting ask_human action to awaiting_human_input format")
+                        return {
+                            "type": "awaiting_human_input",
+                            "question": item.get("parameters", {}).get("question", "Need more information")
+                        }
+                
+                return parsed_response
+                
+            # Handle case where parsed response is already a structured dict with "type" key
+            elif isinstance(parsed_response, dict) and "type" in parsed_response:
+                ai_logger.info(f"Parsed response as structured dict with type: {parsed_response['type']}")
+                return parsed_response
+                
+            else:
+                ai_logger.warning(f"Parsed JSON is not a recognized format: {parsed_response}")
+        except json.JSONDecodeError:
+            ai_logger.debug("Direct JSON parsing failed, attempting regex extraction")
+        
+        # Fall back to regex extraction if direct parsing fails
+        # This handles cases where the LLM includes markdown formatting or explanation text
+        try:
+            # Using a greedy match to capture complete JSON arrays
             json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
             if json_match:
                 json_string = json_match.group(0)
                 ai_logger.debug(f"Extracted JSON string using regex:\n{json_string}")
-                # Need to be careful with escaped characters or malformed JSON from LLM
+                
                 plan = json.loads(json_string)
                 if isinstance(plan, list):
-                    ai_logger.info(f"Successfully parsed plan as JSON array.")
+                    ai_logger.info(f"Successfully parsed plan as JSON array using regex.")
+                    
+                    # Normalize format: ensure we use "action" key consistently
+                    for item in plan:
+                        if "action" not in item and "name" in item:
+                            item["action"] = item.pop("name")
+                            
+                    # Handle special case: if there's an ask_human action, convert to awaiting_human_input
+                    for item in plan:
+                        if item.get("action") == "ask_human":
+                            ai_logger.info("Converting ask_human action to awaiting_human_input format")
+                            return {
+                                "type": "awaiting_human_input",
+                                "question": item.get("parameters", {}).get("question", "Need more information")
+                            }
+                            
                     return plan
                 else:
-                    # print(f"Parsed JSON is not a list: {plan}") # Replace with proper logging
                     ai_logger.warning(f"Parsed JSON is not a list: {plan}")
                     return {"type": "invalid_plan", "message": "LLM response was not a JSON array."}
 
-            # If no JSON array found, check for other structured responses like ask_human
-            try:
-                 json_dict = json.loads(response_text)
-                 if isinstance(json_dict, dict) and json_dict.get("type") == "awaiting_human_input":
-                     ai_logger.info(f"Parsed response as 'awaiting_human_input'.")
-                     return json_dict # LLM returned structured human input request instead of plan
-            except json.JSONDecodeError:
-                 pass # Not a structured dict
-
-            # print(f"Could not parse plan or structured response from LLM response: {response_text}") # Log parsing failure
+            # If no JSON array found, check for dictionary responses like ask_human
+            dict_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if dict_match:
+                json_string = dict_match.group(0)
+                ai_logger.debug(f"Extracted JSON dict using regex:\n{json_string}")
+                
+                parsed_dict = json.loads(json_string)
+                if isinstance(parsed_dict, dict):
+                    # Handle ask_human consistently
+                    if parsed_dict.get("action") == "ask_human":
+                        return {
+                            "type": "awaiting_human_input",
+                            "question": parsed_dict.get("parameters", {}).get("question", "Need more information")
+                        }
+                    
+                    # Pass through other structured responses
+                    if "type" in parsed_dict:
+                        return parsed_dict
+            
             ai_logger.error(f"Could not parse plan or structured response from LLM response:\n{response_text}")
             return {"type": "parsing_failed", "message": "LLM response did not contain a valid plan or structured action."}
 
         except json.JSONDecodeError as e:
-            # print(f"JSON Decode Error parsing LLM plan response: {e}") # Log parsing error
             ai_logger.error(f"JSON Decode Error parsing LLM plan response: {e}", exc_info=True)
             return {"type": "parsing_error", "message": f"Failed to parse LLM plan response: {e}"}
         except Exception as e:
-            # print(f"Unexpected error during plan parsing: {e}") # Log other errors
             ai_logger.error(f"Unexpected error during plan parsing: {e}", exc_info=True)
             return {"type": "parsing_error", "message": f"Unexpected parsing error: {e}"}
 
@@ -241,43 +463,123 @@ class UnifiedLLMAgent:
     def _parse_reflection_response(self, response_text: str) -> Dict[str, Any]:
         """
         Parse the reflection response from the LLM into a structured action.
-        Expected LLM response types: {"type": "task_complete"}, {"type": "awaiting_human_input", "question": "..."}, {"type": "add_tasks", "tasks": ...]}} etc.
+        Expected LLM response types: {"type": "task_complete"}, {"type": "awaiting_human_input", "question": "..."},
+        {"type": "add_tasks", "tasks": [...]}, {"type": "info", "information": "..."}, etc.
         """
         ai_logger.debug(f"Attempting to parse LLM reflection response:\n{response_text}")
+        
+        # First try direct JSON parsing for properly formatted responses
         try:
-            # Attempt to parse the response as JSON
-            action = json.loads(response_text)
-
-            # Validate the structure
-            if not isinstance(action, dict) or "type" not in action:
-                 ai_logger.warning(f"Invalid reflection format from LLM: {response_text}")
-                 return {"type": "unhandled_reflection", "message": "Invalid format", "raw_response": response_text} # Include raw response
-
-            # Validate known types
-            valid_types = ["task_complete", "awaiting_human_input", "add_tasks", "info"]
-            if action["type"] not in valid_types:
-                 ai_logger.warning(f"Unknown reflection type from LLM: {action['type']}")
-                 return {"type": "unhandled_reflection", "message": f"Unknown type: {action['type']}", "raw_response": response_text} # Include raw response
-
-            # Basic validation for types with parameters
-            if action["type"] == "awaiting_human_input" and "question" not in action:
-                 ai_logger.warning(f"'awaiting_human_input' missing 'question': {response_text}")
-                 return {"type": "unhandled_reflection", "message": "'awaiting_human_input' missing question", "raw_response": response_text} # Include raw response
-            if action["type"] == "add_tasks":
-                 if "tasks" not in action or not isinstance(action["tasks"], list):
-                     ai_logger.warning(f"'add_tasks' missing or invalid 'tasks' list: {response_text}")
-                     return {"type": "unhandled_reflection", "message": "'add_tasks' missing or invalid tasks list", "raw_response": response_text} # Include raw response
-                 # Optionally validate tasks structure within the list
-
-            ai_logger.info(f"Successfully parsed reflection action: {action.get('type')}")
-            return action
-
+            # This should work with _call_llm direct output
+            parsed_response = json.loads(response_text)
+            
+            # Handle case where the response is a list of action objects
+            # (possible from tool calls in the new implementation)
+            if isinstance(parsed_response, list):
+                ai_logger.debug("Parsed response is a list - looking for specific actions to convert")
+                
+                # Check for special cases that should convert to specific reflection types
+                for item in parsed_response:
+                    # Normalize action name if needed
+                    if "action" not in item and "name" in item:
+                        item["action"] = item.pop("name")
+                        
+                    # Convert mark_task_complete to task_complete response
+                    if item.get("action") == "mark_task_complete":
+                        ai_logger.info("Converting mark_task_complete action to task_complete reflection")
+                        return {"type": "task_complete"}
+                        
+                    # Convert ask_human to awaiting_human_input
+                    if item.get("action") == "ask_human":
+                        ai_logger.info("Converting ask_human action to awaiting_human_input reflection")
+                        return {
+                            "type": "awaiting_human_input",
+                            "question": item.get("parameters", {}).get("question", "Need more information")
+                        }
+                
+                # If it's a list but not one of the special cases,
+                # return it as an add_tasks reflection
+                ai_logger.info("Converting list of actions to add_tasks reflection")
+                return {"type": "add_tasks", "tasks": parsed_response}
+            
+            # Handle case where parsed response is already a reflection dict with "type" key
+            if isinstance(parsed_response, dict) and "type" in parsed_response:
+                # Validate known types
+                valid_types = ["task_complete", "awaiting_human_input", "add_tasks", "info"]
+                if parsed_response["type"] in valid_types:
+                    # Validate required parameters for specific types
+                    if parsed_response["type"] == "awaiting_human_input" and "question" not in parsed_response:
+                        ai_logger.warning("'awaiting_human_input' missing 'question' field")
+                        parsed_response["question"] = "Need more information to proceed. Can you provide details?"
+                    
+                    if parsed_response["type"] == "add_tasks" and ("tasks" not in parsed_response or not isinstance(parsed_response["tasks"], list)):
+                        ai_logger.warning("'add_tasks' missing or invalid 'tasks' list")
+                        return {"type": "unhandled_reflection", "message": "'add_tasks' missing or invalid tasks list"}
+                    
+                    if parsed_response["type"] == "info" and "information" not in parsed_response:
+                        ai_logger.warning("'info' missing 'information' field")
+                        return {"type": "unhandled_reflection", "message": "'info' missing information field"}
+                    
+                    ai_logger.info(f"Successfully parsed reflection with type: {parsed_response['type']}")
+                    return parsed_response
+                else:
+                    ai_logger.warning(f"Unknown reflection type: {parsed_response['type']}")
+                    return {"type": "unhandled_reflection", "message": f"Unknown type: {parsed_response['type']}"}
+        except json.JSONDecodeError:
+            ai_logger.debug("Direct JSON parsing failed, attempting regex extraction")
+        
+        # Fall back to regex extraction if direct parsing fails
+        try:
+            # First try to find a JSON dictionary that might contain a reflection
+            dict_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if dict_match:
+                json_string = dict_match.group(0)
+                ai_logger.debug(f"Extracted JSON dict using regex:\n{json_string}")
+                
+                action = json.loads(json_string)
+                if isinstance(action, dict):
+                    # If it has a "type" key, treat it as a reflection
+                    if "type" in action:
+                        valid_types = ["task_complete", "awaiting_human_input", "add_tasks", "info"]
+                        if action["type"] in valid_types:
+                            ai_logger.info(f"Successfully parsed reflection action from regex: {action['type']}")
+                            return action
+                    
+                    # If it has an "action" key, it might be a tool call to convert
+                    if "action" in action:
+                        if action["action"] == "mark_task_complete":
+                            return {"type": "task_complete"}
+                        elif action["action"] == "ask_human" or action["action"] == "ask_question":
+                            return {
+                                "type": "awaiting_human_input",
+                                "question": action.get("parameters", {}).get("question", "Need more information")
+                            }
+            
+            # If no reflection dict found, check for a JSON array that might be a plan
+            array_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+            if array_match:
+                json_string = array_match.group(0)
+                ai_logger.debug(f"Extracted JSON array using regex:\n{json_string}")
+                
+                array_data = json.loads(json_string)
+                if isinstance(array_data, list) and len(array_data) > 0:
+                    ai_logger.info(f"Found a list of {len(array_data)} actions - converting to add_tasks")
+                    return {"type": "add_tasks", "tasks": array_data}
+            
+            # If we couldn't find valid JSON, try to extract a task completion signal
+            if "task complete" in response_text.lower() or "task is complete" in response_text.lower():
+                ai_logger.info("Found task completion phrase in text")
+                return {"type": "task_complete"}
+                
+            ai_logger.warning(f"Could not extract structured reflection from: {response_text}")
+            return {"type": "unhandled_reflection", "message": "Could not parse reflection", "raw_response": response_text}
+            
         except json.JSONDecodeError as e:
             ai_logger.error(f"JSON Decode Error parsing LLM reflection response: {e}", exc_info=True)
-            return {"type": "parsing_error", "message": f"Failed to parse JSON: {e}", "raw_response": response_text} # Include raw response
+            return {"type": "parsing_error", "message": f"Failed to parse JSON: {e}", "raw_response": response_text}
         except Exception as e:
             ai_logger.error(f"Unexpected error during reflection parsing: {e}", exc_info=True)
-            return {"type": "parsing_error", "message": f"Unexpected parsing error: {e}", "raw_response": response_text} # Include raw response
+            return {"type": "parsing_error", "message": f"Unexpected parsing error: {e}", "raw_response": response_text}
 
 
     def _plan_needs_human_input(self, plan: Union[List[Dict[str, Any]], Dict[str, Any]]) -> bool:

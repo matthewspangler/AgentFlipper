@@ -99,11 +99,7 @@ For information display with completion:
     "arguments": {}
   }
 ]
-
-Available commands include: info, gpio, ibutton, irda, lfrfid, nfc, subghz, usb,
-vibro, update, bt, storage, bad_usb, backlight, led, and others.
-
-IMPORTANT: The backlight command is 'led bl <value>' where value is 0-255."""
+"""
 
         # User configurable prompt that adds to the system prompt
         self.user_prompt = llm_config.get("user_prompt", "")
