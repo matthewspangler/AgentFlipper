@@ -1,19 +1,22 @@
 import time
 import uuid # For generating unique IDs if needed for tasks
 
+# Assuming AgentState is in the same package or path is adjusted
+# from .agent_loop.agent_state import AgentState
+# For now, we'll assume AgentState is passed and has task_queue attribute
+
 class AgentState:
     def __init__(self, config=None):
         self.conversation_history = []
-        self.context_buffer = {}  # For storing broader context like current_goal
-        self.task_queue = []      # A list to store task dictionaries
-        self.current_task = None  # The task currently being processed
-        self.task_results = {}    # Dictionary to store results of completed tasks by ID
+        self.context_buffer = {}
+        self.task_queue = []
+        self.current_task = None
+        self.task_results = {}
         self.config = config or {}
         
-        # References to other core components, to be set during initialization
-        self.flipper_agent = None # Instance of FlipperZeroManager
-        self.llm_agent = None     # Instance of UnifiedLLMAgent
-        self.app_instance = None  # Instance of the Textual App for UI updates
+        self.flipper_agent = None
+        self.llm_agent = None
+        self.app_instance = None
 
         self.awaiting_human_input = False
         self.human_input_request = None # Stores details of the human input request
@@ -69,9 +72,10 @@ class AgentState:
         self.human_input_request = None # Clear the request
         return result
 
-    def get_full_context_for_llm(self):
-        """Prepares the full context including history and current state for LLM."""
-        # This would combine conversation_history, parts of context_buffer,
-        # current_task, etc. into a format suitable for the LLM prompt.
-        # For now, just returning history as an example.
-        return self.conversation_history # Placeholder
+    # TODO: Implement get_full_context_for_llm to prepare context for LLM, combining history and state.
+    # def get_full_context_for_llm(self):
+    #     """Prepares the full context including history and current state for LLM."""
+    #     # This would combine conversation_history, parts of context_buffer,
+    #     # current_task, etc. into a format suitable for the LLM prompt.
+    #     # For now, just returning history as an example.
+    #     return self.conversation_history # Placeholder

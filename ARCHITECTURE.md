@@ -148,22 +148,22 @@ The system uses two key shell scripts:
 
 ```mermaid
 graph TD
-    B(Receive User Input) --> B1(Add User Input to Task Queue)
-    B1 --> C(Initialize/Update Context Buffer)
+    B(Receive User Input) --> B1(Add User Input to Task Queue TaskManager.add_user_task)
+    B1 --> C(Initialize/Update Context Buffer AgentState.update_context)
     C --> D{Loop: any more tasks?}
-    D -- No --> E_F(Give Task to LLM for Planning)
+    D -- No --> E_F(Give Task to LLM for Planning UnifiedLLMAgent.create_initial_plan)
     E_F --> H{Plan Valid?}
-    H -- Yes --> I(Add Plan to Task Queue)
+    H -- Yes --> I(Add Plan to Task Queue TaskManager.add_plan_to_queue)
     I --> J{Task Queue Empty?}
-    J -- No --> K(Get Next Task from Queue)
-    K --> L(Execute Task)
-    L --> MN(Give Task Result to LLM for Planning)
+    J -- No --> K(Get Next Task from Queue TaskManager.get_next_task)
+    K --> L(Execute Task ToolExecutor.execute_task)
+    L --> MN(Give Task Result to LLM for Planning UnifiedLLMAgent.reflect_and_plan_next)
     MN --> OQ{LLM: Suggest Next Action or Task Complete?}
-    OQ -- Suggests Next Action --> S(Add Next Action to Task Queue)
+    OQ -- Suggests Next Action --> S(Add Next Action to Task Queue TaskManager.add_plan_to_queue)
     S --> J
     OQ -- Signals Task Complete --> D
     J -- Yes --> D
-    H -- No --> W(Handle Invalid Plan)
+    H -- No --> W(Handle Invalid Plan AgentLoop._handle_invalid_plan)
     W --> D
     D -- Yes --> X[End]
 ```

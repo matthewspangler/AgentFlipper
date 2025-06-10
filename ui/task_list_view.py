@@ -44,9 +44,42 @@ class TaskListTreeView(Tree[None]):
 
     def _format_task(self, task: Dict[str, Any]) -> str:
         """Formats a task dictionary into a human-readable string."""
-        task_description = task.get("description", "Unnamed Task")
-        tool_name = task.get("tool_name", "N/A")
+        task_type = task.get("type", "unknown")
         task_id = task.get("id", "N/A")[:4] # Use first 4 chars of ID
+
+        if task_type == "user_request":
+            # For the initial user request task
+            task_description = f"Goal: {task.get('content', 'Unnamed Request')}"
+            tool_info = "N/A" # User request doesn't have a tool
+        elif task_type == "planned_action":
+            # For tasks generated from the LLM's plan
+            tool_name = task.get("action", "N/A")
+            # Try to get a concise description from parameters or just use tool name
+            parameters = task.get("parameters", {})
+            if tool_name == "execute_commands" and "commands" in parameters and isinstance(parameters["commands"], list):
+                 # Display the first command or a summary
+                 commands = parameters["commands"]
+                 if commands:
+                     task_description = f"Execute: {commands[0][:30]}..." if len(commands[0]) > 30 else f"Execute: {commands[0]}"
+                 else:
+                     task_description = "Execute Commands (no commands)"
+                 tool_info = tool_name
+            elif tool_name == "provide_information" and "information" in parameters:
+                 task_description = f"Info: {parameters['information'][:30]}..." if len(parameters['information']) > 30 else f"Info: {parameters['information']}"
+                 tool_info = tool_name
+            elif tool_name == "ask_question" and "question" in parameters:
+                 task_description = f"Ask: {parameters['question'][:30]}..." if len(parameters['question']) > 30 else f"Ask: {parameters['question']}"
+                 tool_info = tool_name
+            else:
+                 # Default description for other planned actions
+                 task_description = f"Action: {tool_name}"
+                 tool_info = tool_name
+        else:
+            # For unknown task types
+            task_description = f"Unknown Task Type ({task_type})"
+            tool_info = "N/A"
+
+        formatted_string = f"{task_description} (Tool: {tool_info}) [ID: {task_id}]"
 
         formatted_string = f"{task_description} (Tool: {tool_name}) [ID: {task_id}]"
         return formatted_string

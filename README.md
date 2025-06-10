@@ -118,6 +118,7 @@ The config file is loaded from:
 - Provide live view of task list in sidebar like treemacs
 - Add proper human-in-the-middle
 - Make tool calling extensible via plugins
+- change execute_commands tool to pyflipper
 
 ## Licensing
 
