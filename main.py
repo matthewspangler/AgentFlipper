@@ -18,15 +18,14 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 
-from colors import Colors # Import the new Colors class
-from rag_retriever import RAGRetriever # Import the new RAGRetriever class
-from request_processor import process_user_request # Import the new process_user_request function
+from rag import RAGRetriever 
+from agent.request_processor import process_user_request
 from hardware_integration import establish_flipper_connection, initialize_rag_system, configure_llm_agent # Import hardware integration functions
-from user_interface import AgentFlipper, run_interactive_loop # Import the main interactive loop
-from agent_loop import AgentLoop, AgentState, TaskManager, ToolExecutor
-from hardware_manager import HardwareManager, FlipperZeroManager # Import FlipperZeroManager
+from user_interface import Colors, AgentFlipper, run_interactive_loop # Import the main interactive loop
+from agent import AgentLoop, AgentState, TaskManager, ToolExecutor
+from hardware.hardware_manager import HardwareManager, FlipperZeroManager # Import FlipperZeroManager
 from llm import UnifiedLLMAgent
-from ui import HumanInteractionHandler
+from ui import HumanInteractionHandler, Colors
 
 # Custom exception for configuration errors.
 class ConfigError(Exception):
@@ -37,7 +36,7 @@ class ConfigError(Exception):
 LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_DIR, f"agent_flipper_{time.strftime('%Y%m%d_%H%M%S')}.log")
-from hardware_manager import HardwareManager # Import the new HardwareManager class
+from hardware.hardware_manager import HardwareManager # Import the new HardwareManager class
 AI_LOG_FILE = os.path.join(LOG_DIR, f"agent_flipper_ai_{time.strftime('%Y%m%d_%H%M%S')}.log")
 
 # Configure main logger - default to file only

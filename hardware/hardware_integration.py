@@ -7,10 +7,10 @@ import logging
 import sys # Added sys import
 from typing import Dict, Any, Optional
 
-from colors import Colors
-from hardware_manager import FlipperZeroManager
+from ui import Colors
+from hardware.hardware_manager import FlipperZeroManager
 from rag_retriever import RAGRetriever
-from llm_agent import LLMAgent
+from llm import LLMAgent
 
 logger = logging.getLogger("AgentFlipper")
 

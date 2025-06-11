@@ -11,7 +11,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.schema import Document
 from pathlib import Path
 
-from colors import Colors # Import the Colors class
+from ui import Colors # Import the Colors class
 
 logger = logging.getLogger("FlipperAgent")
 VECTOR_STORE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "flipper_cli_faiss")

@@ -5,8 +5,8 @@ Processes user requests and interacts with the Flipper Zero and LLM agents.
 import logging
 from typing import Optional, List, Tuple
 
-from hardware_manager import FlipperZeroManager
-from llm_agent import LLMAgent
+from hardware.hardware_manager import FlipperZeroManager
+from agent import LLMAgent
 
 logger = logging.getLogger("AgentFlipper")
 

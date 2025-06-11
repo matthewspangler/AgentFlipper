@@ -1,4 +1,5 @@
 [] Improve and clean up prompts
+[] Resolve UnifiedLLMAgent vs. LLMAgent
 [] Ask LLM to verify agent logic against architecture doc
 [] Update/delete shell scripts after recent overhaul of agent loop
 [] Add fztea as tool
