@@ -200,47 +200,20 @@ The system uses two key shell scripts for setup and execution.
 graph TD
     B(Receive User Input) --> B1(Add User Input to Task Queue TaskManager.add_user_task)
     B1 --> C(Initialize/Update Context Buffer AgentState.update_context)
-    C --> D{Loop: Check if Tasks Done/Need Human Input/Tasks Todo}
-    D -- No tasks or awaiting human input --> P(Determine Next Step)
-    P -- Task Queue Empty --> E_F(Give Task to LLM for Planning UnifiedLLMAgent.create_initial_plan)
-    P -- Awaiting Human Input --> Z(Wait for Human Input)
-    Z --> D
+    C --> D{Loop: any more tasks?}
+    D -- No --> E_F(Give Task to LLM for Planning UnifiedLLMAgent.create_initial_plan)
     E_F --> H{Plan Valid?}
-    H -- Yes --> A(Handle Plan: Approval/Add to Queue)
-    A --> J{Task Queue Empty?}
+    H -- Yes --> I(Add Plan to Task Queue TaskManager.add_plan_to_queue)
+    I --> J{Task Queue Empty?}
     J -- No --> K(Get Next Task from Queue TaskManager.get_next_task)
     K --> L(Execute Task ToolExecutor.execute_task)
-    L --> MN(Give Task Result to LLM for Reflection UnifiedLLMAgent.reflect_and_plan_next)
-    MN --> OQ{LLM Reflection: Decision?}
-    OQ -- Add Tasks --> S(Add New Tasks to Queue TaskManager.add_plan_to_queue)
+    L --> MN(Give Task Result to LLM for Planning UnifiedLLMAgent.reflect_and_plan_next)
+    MN --> OQ{LLM: Suggest Next Action or Task Complete?}
+    OQ -- Suggests Next Action --> S(Add Next Action to Task Queue TaskManager.add_plan_to_queue)
     S --> J
-    OQ -- Task Complete --> D
-    OQ -- Awaiting Human Input --> Z
-    OQ -- Info --> D
+    OQ -- Signals Task Complete --> D
     J -- Yes --> D
     H -- No --> W(Handle Invalid Plan AgentLoop._handle_invalid_plan)
     W --> D
-    D -- Tasks to Process & Not Awaiting Human Input --> K
-    D -- All Tasks Done --> X[Return to User Prompt]
-
-    subgraph Human Interaction
-        Z[Wait for Human Input]
-    end
-
- ```
-Explanation of Diagram Updates based on Implementation:
-- The "Loop: any more tasks?" diamond (D) is generalized to "Check Loop Conditions" to better reflect the `while True` loop and its internal checks in `AgentLoop.py` (`awaiting_human_input`, `task_manager.is_empty()`).
-- An intermediate step "Determine Next Step" (P) is added after checking loop conditions to explicitly show the branching based on whether the agent is awaiting human input or needs to check/generate a plan.
-- The state of waiting for human input is explicitly represented by node Z, which feeds back into checking the loop conditions.
-- Handling of adding plans (approval/queueing) is grouped into node A.
-- The LLM Reflection decision (OQ) now explicitly lists possible outcomes found in the code (`Add Tasks`, `Task Complete`, `Awaiting Human Input`, `Info`).
-- Edges reflect the flow based on the code:
-    - From D: Proceeds to P if conditions require determining the next step within the loop (not exiting). Exits to X if overall task complete.
-    - From P: Branches based on state (empty queue triggers planning E_F, awaiting human input goes to Z).
-    - From A: Feeds into the "Task Queue Empty?" check (J) because adding a plan might fill the queue.
-    - From MN: Feeds into the LLM Reflection Decision (OQ).
-    - From OQ: Branches based on the LLM's decision (add tasks to S, task complete signal affects D, awaiting human input goes to Z, info goes back to D to re-check conditions).
-    - From J: If queue is not empty, gets next task (K). If queue is empty *after* planning/adding tasks, it goes back to D to re-evaluate (which would then likely lead to P and potentially breaking the loop if no goal remains, or replanning if the goal is still active but the previous plan failed). The diagram shows it going to D, which aligns with the `while True` loop structure re-evaluating conditions.
-    - The Invalid Plan handling (W) now explicitly feeds back to D, as seen in `AgentLoop.py` which might then trigger HITL error resolution (via P and Z) or break.
-
-This updated description and diagram better align with the implementation's state-driven loop and explicit human interaction handling.
+    D -- Yes --> X[End]
+```
