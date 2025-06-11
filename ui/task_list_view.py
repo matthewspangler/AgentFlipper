@@ -56,13 +56,13 @@ class TaskListTreeView(Tree[None]):
             tool_name = task.get("action", "N/A")
             # Try to get a concise description from parameters or just use tool name
             parameters = task.get("parameters", {})
-            if tool_name == "execute_commands" and "commands" in parameters and isinstance(parameters["commands"], list):
+            if tool_name == "pyflipper" and "commands" in parameters and isinstance(parameters["commands"], list):
                  # Display the first command or a summary
                  commands = parameters["commands"]
                  if commands:
                      task_description = f"Execute: {commands[0][:30]}..." if len(commands[0]) > 30 else f"Execute: {commands[0]}"
                  else:
-                     task_description = "Execute Commands (no commands)"
+                     task_description = "pyflipper Commands (no commands)"
                  tool_info = tool_name
             elif tool_name == "provide_information" and "information" in parameters:
                  task_description = f"Info: {parameters['information'][:30]}..." if len(parameters['information']) > 30 else f"Info: {parameters['information']}"
@@ -80,6 +80,4 @@ class TaskListTreeView(Tree[None]):
             tool_info = "N/A"
 
         formatted_string = f"{task_description} (Tool: {tool_info}) [ID: {task_id}]"
-
-        formatted_string = f"{task_description} (Tool: {tool_name}) [ID: {task_id}]"
         return formatted_string

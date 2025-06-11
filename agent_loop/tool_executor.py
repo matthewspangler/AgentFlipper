@@ -13,7 +13,7 @@ class ToolExecutor:
     def _register_tools(self) -> Dict[str, Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]]:
         """Register all available tools with their execution functions."""
         return {
-            "execute_commands": self._execute_flipper_commands,
+            "pyflipper": self._execute_flipper_commands,
             "provide_information": self._provide_information,
             "ask_question": self._ask_question,
             # TODO: Add other tools as they are implemented

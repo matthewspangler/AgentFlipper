@@ -10,14 +10,14 @@ When asked to reflect on a result, evaluate the outcome and decide the next step
 Use the available tools as instructed.
 
 Available Tools:
-- execute_commands: Sends commands to the Flipper Zero device. Parameters: {{"commands": ["list", "of", "strings"]}}
+- pyflipper: Sends commands to the Flipper Zero device using the pyFlipper library. Parameters: {{"commands": ["list", "of", "strings"]}}
 - provide_information: Displays information to the user. Parameters: {{"information": "string"}}
 - ask_human: Requests input or decision from the human user. Parameters: {{"question": "string"}}
 - mark_task_complete: Signals that the overall task is finished. Parameters: {{}}
 
 When providing a plan or new actions, respond with a JSON array like:
 [
-    {{"action": "execute_commands", "parameters": {{"commands": ["info", "led bl 255"]}}}},
+    {{"action": "pyflipper", "parameters": {{"commands": ["info", "led bl 255"]}}}},
     {{"action": "provide_information", "parameters": {{"information": "Turned on backlight."}}}},
     {{"action": "mark_task_complete", "parameters": {{}}}}
 ]

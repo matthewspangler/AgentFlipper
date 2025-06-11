@@ -97,29 +97,6 @@ The config file is loaded from:
 1. `~/.config/flipper_agent/config.yaml` (if exists)
 2. `./config.yaml` (project directory)
 
-## TODO
-- rename execute_commands to serial_commands
-- Task queue with evaluation loop
-- Validate planning prompts
-- Re-add divider lines between tasks/subtasks
-- No freeze in textual
-- Analyze data that is not serial commands
-- Fix token issue
-- Smarter context management needed
-- Automated testing needed
-- Cannot copy/paste into terminal
-- Get the theming right
-- RAG more documentation and hacking tutorials
-- Window resizing is broken
-- Clean up obsolete code and redundant comments
-- Test that planning LLM is capable of inserting tasks *in between* other tasks
-- Ask 8K AI to validate tasks
-- Change output to have standard terms, like requests, tasks, plans, actions, etc.
-- Provide live view of task list in sidebar like treemacs
-- Add proper human-in-the-middle
-- Make tool calling extensible via plugins
-- change execute_commands tool to pyflipper
-
 ## Licensing
 
 GNU General Public License v3.0 (GPLv3)
