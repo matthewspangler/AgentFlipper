@@ -1,16 +1,22 @@
 """
-Processes user requests and interacts with the Flipper Zero and LLM agents.
+Processes user requests and interacts with the Flipper Zero and LLM agents
+using the Plan, Act, Reflect loop with UnifiedLLMAgent.
 """
 
 import logging
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any # Added Dict, Any for task structure
 
 from hardware.hardware_manager import FlipperZeroManager
-from .llm_agent import UnifiedLLMAgent # Import UnifiedLLMAgent
-from .agent_loop.agent_state import AgentState # Import AgentState
+from .llm_agent import UnifiedLLMAgent
+from .agent_loop.agent_state import AgentState # Assuming AgentState is here
+
+# Assuming ToolExecutor and TaskManager might be needed here or imported
+# from .agent_loop.task_manager import TaskManager # Example import
+# from .agent_loop.tool_executor import ToolExecutor # Example import
 
 logger = logging.getLogger("AgentFlipper")
-async def process_user_request(app_instance, user_input: str, flipper_agent: FlipperZeroManager, unified_llm_agent: UnifiedLLMAgent, agent_state: AgentState):
+
+async def process_user_request_unified(app_instance: Any, user_input: str, flipper_agent: FlipperZeroManager, unified_llm_agent: UnifiedLLMAgent, agent_state: AgentState):
     """
     Process a user request using the Plan, Act, Reflect loop with UnifiedLLMAgent.
     Args:
@@ -60,6 +66,7 @@ async def process_user_request(app_instance, user_input: str, flipper_agent: Fli
         if agent_state.is_task_queue_empty() and not agent_state.is_awaiting_human_input():
             # Only plan if the task queue is empty and not waiting for human input
             await app_instance.display_message(f"[purple]Planning...[/purple]")
+            # Pass agent_state to create_initial_plan for context if needed
             plan_result = await unified_llm_agent.create_initial_plan(agent_state.get_current_task() or user_input) # Use current task or user input
 
             # Handle plan_result (list of tasks, awaiting_human_input, etc.)
@@ -89,7 +96,7 @@ async def process_user_request(app_instance, user_input: str, flipper_agent: Fli
             next_task = agent_state.get_next_task() # Assuming AgentState manages queue and returns next task
             if next_task:
                 await app_instance.display_message(f"[purple]Executing Task: {next_task.get('action', 'Unknown')}[/purple]")
-                
+
                 # TODO: Integrate ToolExecutor here
                 # The ToolExecutor would take the task (action and parameters)
                 # and call the appropriate function (e.g., flipper_agent.execute_commands)

@@ -10,7 +10,9 @@ from typing import Dict, Any, Optional
 from ui import Colors
 from hardware.hardware_manager import FlipperZeroManager
 from rag_retriever import RAGRetriever
-from llm import LLMAgent
+from .llm_agent import UnifiedLLMAgent # Import UnifiedLLMAgent
+# Assuming AgentState needs to be imported here if not available via other imports
+# from .agent_loop.agent_state import AgentState # Uncomment if needed
 
 logger = logging.getLogger("AgentFlipper")
 
@@ -42,14 +44,20 @@ def initialize_rag_system(args: argparse.Namespace) -> Optional[RAGRetriever]:
     rag = RAGRetriever()
     return rag if rag.initialize(args) else None
 
-def configure_llm_agent(config: Dict[str, Any], rag: Optional[RAGRetriever],
-                       args: argparse.Namespace) -> LLMAgent:
-    """Initialize and configure the LLM agent with runtime parameters."""
-    # Pass the raw config dictionary to LLMAgent
-    agent = LLMAgent(config, rag)
+# Assuming AgentState is passed in from the calling code (e.g., main.py)
+# If AgentState is managed and accessible globally or via another service locator pattern,
+# this signature might not need to change, and we'd get agent_state differently.
+# Based on UnifiedLLMAgent.__init__ requiring agent_state, passing it seems most direct.
+from .agent_loop.agent_state import AgentState # Import AgentState
 
-    # These overrides were previously applied by ConfigManager.
-    # LLMAgent will now access them directly from the passed config dict.
-    # No changes needed here, as the config dict passed already has overrides applied.
+def configure_llm_agent(config: Dict[str, Any], agent_state: AgentState, # Added agent_state parameter
+                       args: argparse.Namespace) -> UnifiedLLMAgent: # Changed return type
+    """Initialize and configure the LLM agent with runtime parameters."""
+    # Instantiate UnifiedLLMAgent instead of LLMAgent
+    # UnifiedLLMAgent constructor takes config and agent_state
+    agent = UnifiedLLMAAgent(config, agent_state)
+
+    # The config dictionary passed likely already has overrides applied,
+    # so UnifiedLLMAgent can access them directly.
 
     return agent
