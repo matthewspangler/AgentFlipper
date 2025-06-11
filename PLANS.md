@@ -1,4 +1,5 @@
 [] Improve and clean up prompts
+[] Ask LLM to verify agent logic against architecture doc
 [] Update/delete shell scripts after recent overhaul of agent loop
 [] Add fztea as tool
 [] Add divider lines between distinct sections of TUI output
