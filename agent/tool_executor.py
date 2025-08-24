@@ -27,8 +27,7 @@ class ToolExecutor:
 
         try:
             if tool_name not in self.tools:
-                import logging
-                log = logging.getLogger("AgentFlipper")
+                log = logging.getLogger(__name__)
                 log.error(f"Attempted to call unknown tool '{tool_name}' for task ID {task_id}")
                 raise ValueError(f"Unknown tool: {tool_name}")
                 
@@ -42,8 +41,7 @@ class ToolExecutor:
             }
             
         except Exception as e:
-            import logging
-            log = logging.getLogger("AgentFlipper")
+            log = logging.getLogger(__name__)
             log.error(f"Error executing tool '{tool_name}' for task ID {task_id}: {e}", exc_info=True)
             
             return {
@@ -58,8 +56,7 @@ class ToolExecutor:
         commands = parameters.get("commands", [])
         
         # Use logging for internal details, UI for user-facing info
-        import logging
-        log = logging.getLogger("AgentFlipper")
+        log = logging.getLogger(__name__)
         log.info(f"Received request to execute commands: {commands}")
         
         if not isinstance(commands, list):
@@ -85,8 +82,7 @@ class ToolExecutor:
     async def _provide_information(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Display information to the user."""
         information = parameters.get("information", "")
-        import logging
-        log = logging.getLogger("AgentFlipper")
+        log = logging.getLogger(__name__)
         log.info(f"Displaying information to user: {information}")
         
         await self.app_instance.display_message(f"ℹ️ {information}")
@@ -99,8 +95,7 @@ class ToolExecutor:
         The actual asking and waiting is handled outside this executor.
         """
         question = parameters.get("question", "I need more information.")
-        import logging
-        log = logging.getLogger("AgentFlipper")
+        log = logging.getLogger(__name__)
         log.info(f"Asked human question via tool: {question}")
 
         # The result indicates to the AgentLoop that human input is needed.

@@ -19,13 +19,14 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 
 from rag import RAGRetriever 
-from agent.request_processor import process_user_request
+from agent.agent_loop_processor import process_user_request_unified as process_user_request
 from hardware import establish_flipper_connection, initialize_rag_system, configure_llm_agent
 from ui import Colors, AgentFlipper, run_interactive_loop
 from agent import AgentLoop, AgentState, TaskManager, ToolExecutor
 from hardware import HardwareManager, FlipperZeroManager 
 from agent.llm_agent import UnifiedLLMAgent
 from ui import HumanInteractionHandler, Colors
+from config import recursive_merge
 
 # Custom exception for configuration errors.
 class ConfigError(Exception):
@@ -108,13 +109,6 @@ def load_from_default_locations() -> Dict[str, Any]:
          # Merge project data into config_data (user data takes precedence)
          if isinstance(project_data, dict):
              # A simple update might overwrite. For merging nested, need a helper.
-             # Let's implement a simple recursive merge.
-             def recursive_merge(target, source):
-                 for key, value in source.items():
-                     if key in target and isinstance(target[key], dict) and isinstance(value, dict):
-                         recursive_merge(target[key], value)
-                     else:
-                         target[key] = value
              recursive_merge(config_data, project_data)
 
 
@@ -187,13 +181,6 @@ def load_and_merge_config(args: argparse.Namespace) -> Dict[str, Any]:
         # args.log_level is for logging setup, likely handled separately
         # if args.log_level is not None: pass
 
-        # Merge override data into the base config
-        def recursive_merge(target, source):
-            for key, value in source.items():
-                if key in target and isinstance(target[key], dict) and isinstance(value, dict):
-                    recursive_merge(target[key], value)
-                else:
-                    target[key] = value
         recursive_merge(merged_config, override_data)
 
         logger.debug("Configuration loaded and merged successfully.")

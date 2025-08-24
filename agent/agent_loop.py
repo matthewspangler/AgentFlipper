@@ -174,7 +174,6 @@ class AgentLoop:
     async def _handle_invalid_plan(self, plan):
         """Handle case when LLM produces invalid plan."""
         # Use logging instead of print
-        import logging
-        log = logging.getLogger("AgentFlipper")
+        log = logging.getLogger(__name__)
         log.error(f"Invalid plan received from LLM: {plan}")
         await self.app_instance.display_message("⚠️ LLM generated an invalid plan. Check logs for details.")

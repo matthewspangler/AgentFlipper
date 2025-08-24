@@ -13,7 +13,7 @@ from pathlib import Path
 
 from ui.colors import Colors # Import the Colors class
 
-logger = logging.getLogger("FlipperAgent")
+logger = logging.getLogger(__name__)
 VECTOR_STORE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "flipper_cli_faiss")
 
 class RAGRetriever:

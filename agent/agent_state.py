@@ -72,10 +72,9 @@ class AgentState:
         self.human_input_request = None # Clear the request
         return result
 
-    # TODO: Implement get_full_context_for_llm to prepare context for LLM, combining history and state.
-    # def get_full_context_for_llm(self):
-    #     """Prepares the full context including history and current state for LLM."""
-    #     # This would combine conversation_history, parts of context_buffer,
-    #     # current_task, etc. into a format suitable for the LLM prompt.
-    #     # For now, just returning history as an example.
-    #     return self.conversation_history # Placeholder
+    def get_full_context_for_llm(self):
+        """Prepares the full context including history and current state for LLM."""
+        context = self.conversation_history.copy()
+        if self.current_task:
+            context.append({"role": "system", "content": f"Current task: {self.current_task}"})
+        return context

@@ -19,7 +19,7 @@ except ImportError:
 Base class for hardware device management
 """
 
-logger = logging.getLogger("AgentFlipper")
+logger = logging.getLogger(__name__)
 
 from ui.colors import Colors
 
