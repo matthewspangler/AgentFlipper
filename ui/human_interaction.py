@@ -6,27 +6,27 @@ from typing import Union, Dict, Any, Optional, List
 # Assuming Textual App instance for UI updates
 # from .textual_app import AgentFlipperApp # Or however the app is named/imported
 
+from agent.agent_state import AgentState
+from .colors import Colors
+
 class HumanInteractionHandler:
-    def __init__(self, agent_state: Any, app_instance: Any): # Use Any for now
+    def __init__(self, agent_state: AgentState, app_instance=None):
         self.agent_state = agent_state
-        self.app_instance = app_instance # This is the Textual App instance
-        
-    async def request_input(self, request_type: str, prompt: str, options: Optional[List[str]] = None) -> None:
-        """
-        Requests input from the human by updating the agent state and signaling the UI.
-        Does NOT wait for input; the AgentLoop handles waiting.
-        """
-        # Update agent state to reflect that we are awaiting human input
-        self.agent_state.request_human_input(request_type, prompt, options)
-        
-        # Signal the UI to display the request
-        # Assuming app_instance has a method to handle this
-        await self.app_instance.display_human_request(
-            request_type, 
-            prompt, 
-            options
-        )
-        
+        self.app_instance = app_instance
+
+    def handle_user_input(self, input_text: str) -> str:
+        """Process user input and return formatted response"""
+        if self.app_instance:
+            self.app_instance.display_output(f"{Colors.OKBLUE}User: {input_text}{Colors.ENDC}")
+        return f"Processed input: {input_text}"
+
+    def display_response(self, response: str) -> None:
+        """Display formatted response to the user"""
+        if self.app_instance:
+            self.app_instance.display_output(f"{Colors.OKGREEN}Agent: {response}{Colors.ENDC}")
+
+    def request_human_input(self, request_type: str, prompt: str, options: Optional[List[str]] = None) -> None:
+        """Legacy method placeholder for compatibility"""
         # The AgentLoop will see agent_state.awaiting_human_input is True and pause itself.
         # The UI's input handling will need to detect when input is received
         # and update agent_state.awaiting_human_input = False

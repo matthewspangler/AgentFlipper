@@ -7,8 +7,9 @@ from textual.app import ComposeResult
 from textual.containers import Container
 from typing import TYPE_CHECKING, List, Dict, Any
 
+from agent.agent_state import AgentState
 if TYPE_CHECKING:
-    from ..agent_loop.agent_state import AgentState
+    pass
 
 class TaskListTreeView(Tree[None]):
     """A Tree widget to display the agent's task queue."""

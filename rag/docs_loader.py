@@ -17,6 +17,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.schema import Document
 
+from ui.colors import Colors
 # URL of the Flipper Zero CLI documentation
 FLIPPER_CLI_DOC_URL = "https://docs.flipper.net/development/cli/"
 DOCS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs")

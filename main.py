@@ -20,11 +20,11 @@ from typing import Dict, Any, Optional, List, Tuple
 
 from rag import RAGRetriever 
 from agent.request_processor import process_user_request
-from hardware_integration import establish_flipper_connection, initialize_rag_system, configure_llm_agent # Import hardware integration functions
-from user_interface import Colors, AgentFlipper, run_interactive_loop # Import the main interactive loop
+from hardware import establish_flipper_connection, initialize_rag_system, configure_llm_agent
+from ui import Colors, AgentFlipper, run_interactive_loop
 from agent import AgentLoop, AgentState, TaskManager, ToolExecutor
-from hardware.hardware_manager import HardwareManager, FlipperZeroManager # Import FlipperZeroManager
-from llm import UnifiedLLMAgent
+from hardware import HardwareManager, FlipperZeroManager 
+from agent.llm_agent import UnifiedLLMAgent
 from ui import HumanInteractionHandler, Colors
 
 # Custom exception for configuration errors.

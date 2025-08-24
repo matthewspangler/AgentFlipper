@@ -171,11 +171,6 @@ class AgentLoop:
         await self.app_instance.display_message("Processing complete for this request.")
         await self.app_instance.update_task_list_ui()
 
-    def _initialize_context_buffer(self):
-        """Set up or update the context buffer based on current goal."""
-        pass # This method seems like a placeholder and doesn't currently do anything
-             # Meaningful beyond what's in process_user_request. Could be removed.
-
     async def _handle_invalid_plan(self, plan):
         """Handle case when LLM produces invalid plan."""
         # Use logging instead of print

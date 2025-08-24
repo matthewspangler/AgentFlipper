@@ -324,14 +324,6 @@ class AgentFlipper(App):
         # e.g., how to respond to different request types. This might be handled in display_human_request.
         await self.display_message(help_text)
         # return is implicit
-    async def show_help(self) -> None:
-        """Display available commands."""
-        help_text = f"\n[green]Available Commands:[/]\n"
-        help_text += f"  [green]/exit, /quit[/] - Terminate the program\n"
-        help_text += f"  [green]/ask[/] - Enter question/answer mode\n"
-        help_text += f"  [green]/help[/] - Show this help message"
-        await self.display_message(help_text)
-
     async def switch_to_ask_mode(self) -> None:
         """Handle mode transition."""
         await self.display_message(f"\nSwitching to inquiry mode...[/]")

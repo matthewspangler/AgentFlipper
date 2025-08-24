@@ -274,7 +274,7 @@ class UnifiedLLMAgent:
             "api_base": self.api_base or llm_config.get("api_base"),
             "temperature": llm_config.get("temperature", 0.3),
             "max_tokens": llm_config.get("max_tokens", 1000),
-            "timeout": llm_config.get("timeout", 60)
+            "timeout": llm_config.get("timeout", 300)
         }
         
         # Clean up None values

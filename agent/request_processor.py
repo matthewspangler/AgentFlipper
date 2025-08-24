@@ -6,8 +6,8 @@ import logging
 from typing import Optional, List, Tuple
 
 from hardware.hardware_manager import FlipperZeroManager
-from .llm_agent import UnifiedLLMAgent # Import UnifiedLLMAgent
-from .agent_loop.agent_state import AgentState # Import AgentState
+from .llm_agent import UnifiedLLMAgent
+from agent import AgentState 
 
 logger = logging.getLogger("AgentFlipper")
 async def process_user_request(app_instance, user_input: str, flipper_agent: FlipperZeroManager, unified_llm_agent: UnifiedLLMAgent, agent_state: AgentState):

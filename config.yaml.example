@@ -11,6 +11,8 @@ llm:
   model: qwen2.5-coder:14b
   # API base URL for Ollama
   api_base: http://localhost:11434
+  # Timeout for LLM requests in seconds
+  timeout: 300
   # Maximum token count for conversation history (industry best practice)
   # Older messages will be removed to stay under this limit
   max_history_tokens: 6000
