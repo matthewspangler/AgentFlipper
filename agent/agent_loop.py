@@ -27,7 +27,6 @@ class AgentLoop:
     async def process_user_request(self, user_input: str):
         """Entry point for processing a user request."""
         self.agent_state.clear_for_new_session()
-        await self.app_instance.display_message(f"Processing: '{user_input}'")
 
         self.agent_state.update_context("current_goal", user_input)
 
@@ -74,7 +73,6 @@ class AgentLoop:
                 # Generate initial plan or next part of plan from LLM
                 await self.app_instance.display_message("🧠 Thinking... (Requesting plan)")
                 plan = await self.llm_agent.create_initial_plan(current_goal)
-                await self.app_instance.display_message(f"Plan received from LLM.") # Simplified display
 
 
                 # Handle the plan returned by LLM. It can be a list of actions or a signal dictionary.
@@ -90,7 +88,11 @@ class AgentLoop:
                         continue # Loop will pause for approval
 
                     # If approved or no approval required, add plan to queue
+                    await self.app_instance.display_message(f"[#ff9722]{'─' * 79}[/#ff9722]")
                     await self.app_instance.display_message(f"📝 Plan received. Adding {len(plan)} steps to task queue.")
+                    for i, step in enumerate(plan, 1):
+                        await self.app_instance.display_message(f"{i}. {step.get('action')}: {step.get('parameters')}")
+                    await self.app_instance.display_message(f"[#ff9722]{'─' * 79}[/#ff9722]")
                     self.task_manager.add_plan_to_queue(plan)
                     await self.app_instance.update_task_list_ui()
 
@@ -114,7 +116,7 @@ class AgentLoop:
                break
 
             await self.app_instance.update_task_list_ui() # Update UI after getting task
-            await self.app_instance.display_message(f"▶️ Executing: {task.get('action')}...")
+            await self.app_instance.display_message(f"▶️  Executing: {task.get('action')}...")
 
             # Execute the task
             result = await self.tool_executor.execute_task(task)

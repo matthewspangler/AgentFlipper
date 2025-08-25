@@ -247,7 +247,7 @@ class AgentFlipper(App):
             return
         else:
             # This is a new user request
-            await self.display_message(f"[yellow]Processing new request: '{user_input}'...[/]")
+            await self.display_message(f"[#ff9722]Processing new request: '{user_input}'...[/#ff9722]")
 
             # Start a worker to run the agent loop for this request
             # The worker will run the main agent loop function

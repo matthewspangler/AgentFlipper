@@ -36,3 +36,6 @@ venv/
 
 # IDE related
 AgentFlipper.code-workspace
+
+# Other
+core
