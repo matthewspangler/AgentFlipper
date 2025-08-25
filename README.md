@@ -97,17 +97,6 @@ The config file is loaded from:
 1. `~/.config/flipper_agent/config.yaml` (if exists)
 2. `./config.yaml` (project directory)
 
-## TODO
-- Task queue with evaluation loop
-- No freeze in textual
-- Analyze data that is not serial commands
-- Fix token issue
-- Smarter context management needed
-- Automated testing needed
-- Cannot copy/paste into terminal
-- Get the theming right
-- RAG more documentation and hacking tutorials
-
 ## Licensing
 
 GNU General Public License v3.0 (GPLv3)

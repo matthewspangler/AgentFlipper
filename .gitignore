@@ -33,3 +33,9 @@ venv/
 
 # Flipper Zero specific
 *.db
+
+# IDE related
+AgentFlipper.code-workspace
+
+# Other
+core

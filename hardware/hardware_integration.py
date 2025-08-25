@@ -7,10 +7,11 @@ import logging
 import sys # Added sys import
 from typing import Dict, Any, Optional
 
-from colors import Colors
-from hardware_manager import FlipperZeroManager
-from rag_retriever import RAGRetriever
-from llm_agent import LLMAgent
+from ui import Colors
+from hardware.hardware_manager import FlipperZeroManager
+from rag.rag_retriever import RAGRetriever
+from agent.llm_agent import UnifiedLLMAgent
+from agent.agent_state import AgentState
 
 logger = logging.getLogger("AgentFlipper")
 
@@ -42,14 +43,9 @@ def initialize_rag_system(args: argparse.Namespace) -> Optional[RAGRetriever]:
     rag = RAGRetriever()
     return rag if rag.initialize(args) else None
 
-def configure_llm_agent(config: Dict[str, Any], rag: Optional[RAGRetriever],
-                       args: argparse.Namespace) -> LLMAgent:
+def configure_llm_agent(config: Dict[str, Any], agent_state: AgentState,
+                        args: argparse.Namespace) -> UnifiedLLMAgent:
     """Initialize and configure the LLM agent with runtime parameters."""
-    # Pass the raw config dictionary to LLMAgent
-    agent = LLMAgent(config, rag)
-
-    # These overrides were previously applied by ConfigManager.
-    # LLMAgent will now access them directly from the passed config dict.
-    # No changes needed here, as the config dict passed already has overrides applied.
+    agent = UnifiedLLMAgent(config, agent_state)
 
     return agent

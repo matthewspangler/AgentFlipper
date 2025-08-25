@@ -18,28 +18,31 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 
-from colors import Colors # Import the new Colors class
-from rag_retriever import RAGRetriever # Import the new RAGRetriever class
-from request_processor import process_user_request # Import the new process_user_request function
-from hardware_integration import establish_flipper_connection, initialize_rag_system, configure_llm_agent # Import hardware integration functions
-from user_interface import run_interactive_loop # Import the main interactive loop
+from rag import RAGRetriever 
+from agent.agent_loop_processor import process_user_request_unified as process_user_request
+from hardware import establish_flipper_connection, initialize_rag_system, configure_llm_agent
+from ui import Colors, AgentFlipper, run_interactive_loop
+from agent import AgentLoop, AgentState, TaskManager, ToolExecutor
+from hardware import HardwareManager, FlipperZeroManager 
+from agent.llm_agent import UnifiedLLMAgent
+from ui import HumanInteractionHandler, Colors
+from config import recursive_merge
 
 # Custom exception for configuration errors.
 class ConfigError(Exception):
     """Custom exception for configuration errors."""
     pass
 
-
 # Setup logging
 LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_DIR, f"agent_flipper_{time.strftime('%Y%m%d_%H%M%S')}.log")
-from hardware_manager import HardwareManager # Import the new HardwareManager class
+from hardware.hardware_manager import HardwareManager # Import the new HardwareManager class
 AI_LOG_FILE = os.path.join(LOG_DIR, f"agent_flipper_ai_{time.strftime('%Y%m%d_%H%M%S')}.log")
 
 # Configure main logger - default to file only
 logger = logging.getLogger("AgentFlipper")
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Add file handler for main logger
@@ -49,7 +52,7 @@ logger.addHandler(file_handler)
 
 # Configure AI response logger
 ai_logger = logging.getLogger("AgentFlipperAI")
-ai_logger.setLevel(logging.INFO)
+ai_logger.setLevel(logging.DEBUG)
 ai_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Add file handler for AI logger
@@ -106,13 +109,6 @@ def load_from_default_locations() -> Dict[str, Any]:
          # Merge project data into config_data (user data takes precedence)
          if isinstance(project_data, dict):
              # A simple update might overwrite. For merging nested, need a helper.
-             # Let's implement a simple recursive merge.
-             def recursive_merge(target, source):
-                 for key, value in source.items():
-                     if key in target and isinstance(target[key], dict) and isinstance(value, dict):
-                         recursive_merge(target[key], value)
-                     else:
-                         target[key] = value
              recursive_merge(config_data, project_data)
 
 
@@ -185,13 +181,6 @@ def load_and_merge_config(args: argparse.Namespace) -> Dict[str, Any]:
         # args.log_level is for logging setup, likely handled separately
         # if args.log_level is not None: pass
 
-        # Merge override data into the base config
-        def recursive_merge(target, source):
-            for key, value in source.items():
-                if key in target and isinstance(target[key], dict) and isinstance(value, dict):
-                    recursive_merge(target[key], value)
-                else:
-                    target[key] = value
         recursive_merge(merged_config, override_data)
 
         logger.debug("Configuration loaded and merged successfully.")
@@ -209,13 +198,70 @@ def load_and_merge_config(args: argparse.Namespace) -> Dict[str, Any]:
 def main():
     """Orchestrate the application startup and shutdown"""
     args = parse_arguments()
-    # Load and merge configuration using the integrated function
     config = load_and_merge_config(args)
-    # Now pass the raw config dictionary
-    rag_retriever = initialize_rag_system(args)
-    flipper_agent = establish_flipper_connection(config) # Pass raw config
-    llm_agent = configure_llm_agent(config, rag_retriever, args) # Pass raw config
-    run_interactive_loop(flipper_agent, llm_agent)
+
+    # Initialize AgentState first
+    agent_state = AgentState(config=config)
+
+    # Initialize components that depend on AgentState but not immediately on the UI
+    task_manager = TaskManager(agent_state=agent_state)
+
+    # Initialize the Flipper Zero manager for hardware interaction
+    # Use FlipperZeroManager instead of the base HardwareManager
+    flipper_agent = FlipperZeroManager(port=config.get("flipper", {}).get("port")) # Instantiate FlipperZeroManager
+    
+    # Establish connection to the device before proceeding
+    if not flipper_agent.connect():
+        logger.error(f"Failed to connect to Flipper Zero on port {config.get('flipper', {}).get('port')}")
+        print(f"{Colors.FAIL}Connection failed - check device and permissions{Colors.ENDC}")
+        sys.exit(1)
+    
+    logger.info("Successfully connected to Flipper Zero")
+    agent_state.flipper_agent = flipper_agent # Pass flipper_agent to state
+
+    # The new UnifiedLLMAgent will handle LLM calls and potentially use RAG internally
+    llm_agent = UnifiedLLMAgent(config=config, agent_state=agent_state)
+    agent_state.llm_agent = llm_agent # Pass llm_agent to state
+
+    # Initialize components that depend on AgentState and will depend on the UI (app_instance)
+    # Pass None for app_instance initially, it will be set by the UI
+    human_interaction_handler = HumanInteractionHandler(agent_state=agent_state, app_instance=None)
+    tool_executor = ToolExecutor(agent_state=agent_state, app_instance=None)
+
+    # Initialize the main agent loop, passing the core components
+    agent_loop = AgentLoop(
+        agent_state=agent_state,
+        task_manager=task_manager,
+        tool_executor=tool_executor,
+        llm_agent=llm_agent,
+        human_interaction_handler=human_interaction_handler,
+        app_instance=None # App instance set by the UI after creation
+    )
+
+    # Instantiate the Textual App (AgentFlipper) and pass the loop and handler
+    # The App's __init__ should handle setting the app_instance back to components
+    app = AgentFlipper(
+        agent_loop=agent_loop,
+        human_interaction_handler=human_interaction_handler,
+        flipper_agent=flipper_agent, # Pass flipper_agent
+        llm_agent=llm_agent # Pass llm_agent
+    )
+
+    # Run the interactive loop which starts the Textual app
+    run_interactive_loop(
+        agent_loop,
+        human_interaction_handler,
+        flipper_agent, # Pass flipper_agent
+        llm_agent # Pass llm_agent
+    )
+
 
 if __name__ == "__main__":
-    main()
+    # Add a simple connection test before running the main app
+    try:
+        logger.info("Running main application")
+        main()
+    except Exception as e:
+        logger.critical(f"Fatal error in main application: {str(e)}", exc_info=True)
+        print(f"Error: {str(e)}")
+        sys.exit(1)
