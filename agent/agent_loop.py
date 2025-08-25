@@ -1,22 +1,21 @@
 import asyncio
-import json # For debugging or displaying complex structures
+import json
+import logging
 from typing import Any, Dict
 
-# These will be proper imports once the modules are created
-# from .agent_state import AgentState
-# from .task_manager import TaskManager
-# from .tool_executor import ToolExecutor
-# from ..llm.llm_agent import UnifiedLLMAgent
-# from ..ui.human_interaction import HumanInteractionHandler
-# from ..ui.textual_app import AgentFlipperApp # Or however the app is named
+from .agent_state import AgentState
+from .task_manager import TaskManager
+from .tool_executor import ToolExecutor
+from .llm_agent import UnifiedLLMAgent
+from ui.human_interaction import HumanInteractionHandler
 
 class AgentLoop:
     def __init__(self,
-                 agent_state: Any,
-                 task_manager: Any,
-                 tool_executor: Any,
-                 llm_agent: Any,
-                 human_interaction_handler: Any,
+                 agent_state: AgentState,
+                 task_manager: TaskManager,
+                 tool_executor: ToolExecutor,
+                 llm_agent: UnifiedLLMAgent,
+                 human_interaction_handler: HumanInteractionHandler,
                  app_instance: Any):
         self.agent_state = agent_state
         self.task_manager = task_manager

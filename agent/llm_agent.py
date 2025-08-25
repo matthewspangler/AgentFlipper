@@ -8,14 +8,13 @@ from typing import Dict, Any, Optional, List, Union
 # Get the AI logger configured in main.py
 ai_logger = logging.getLogger("AgentFlipperAI")
 
-# Assuming AgentState is available
-# from ..agent_loop.agent_state import AgentState
-
+from agent.agent_state import AgentState
 # Import litellm for LLM API calls
-from litellm import completion, acompletion # Import acompletion
+from litellm import completion, acompletion
+from agent import prompts
 
 class UnifiedLLMAgent:
-    def __init__(self, config: Dict[str, Any], agent_state: Any): # Use Any for AgentState for now
+    def __init__(self, config: Dict[str, Any], agent_state: AgentState):
         self.config = config
         self.agent_state = agent_state # Instance of AgentState
         self.provider = config.get("llm", {}).get("provider", "ollama")
@@ -28,58 +27,20 @@ class UnifiedLLMAgent:
 
     def _load_system_prompt(self) -> str:
         """Load the appropriate system prompt for the agent."""
-        # In a real implementation, load this from prompts.py or config
-        # For now, hardcode or load a basic one
-        return """You are an AI assistant that helps control a Flipper Zero device via its command-line interface.
-        Your primary function is to interpret user requests and translate them into precise Flipper Zero CLI commands that are then executed via a serial connection using the pyFlipper library.
-
-        **CRITICAL INSTRUCTIONS:**
-
-        1.  **Prioritize Provided Documentation (RAG Context):** Always refer to and prioritize the provided Flipper Zero CLI documentation when determining the correct command and syntax for a user's request. The commands in this documentation are the ONLY valid commands you can execute.
-        2.  **Use `pyflipper` Tool:** To send commands to the Flipper Zero, you MUST use the `pyflipper` tool. Provide the exact, correct CLI command (e.g., `led bl 255`, not `power backlight on`) as found in the documentation.
-        3.  **Analyze Command Results (Reflection):** After a command is executed, you will receive the device's response in the reflection step. You MUST analyze this response.
-            *   If the response indicates success, you may proceed to the next step or mark the task complete if the overall goal is achieved.
-            *   If the response indicates an error (e.g., "Usage:", "ERROR:", "illegal option"), the command failed. You MUST NOT mark the task complete. Instead, you should:
-                *   Re-evaluate the command based on the documentation and the error message.
-                *   If possible, generate a corrected command using `pyflipper`.
-                *   If unsure how to correct the command or the error is severe, use the `ask_human` tool to request assistance.
-        4.  **Plan, Act, Reflect Cycle:** You operate in a Plan, Act, and Reflect cycle.
-            *   **Plan:** Generate a JSON array of tool calls to achieve the user's request.
-            *   **Act:** The system executes your tool calls.
-            *   **Reflect:** You analyze the results and determine the next step (add more tasks, ask human, mark complete).
-        5.  **Use Available Tools:** You have the following tools:
-            *   `pyflipper`: For sending CLI commands to the Flipper Zero serial.
-            *   `provide_information`: For displaying helpful text to the user.
-            *   `ask_human`: For asking the user questions or requesting help.
-            *   `mark_task_complete`: To signal that the *overall* user request is fully satisfied.
-
-        **Remember:** Your goal is to successfully execute the user's intent on the Flipper Zero by generating correct commands based on the documentation and reacting appropriately to command results. Do not invent commands or guess syntax.
-        """
+        return prompts.SYSTEM_PROMPT
         
     async def create_initial_plan(self, task_description: str) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
         """Generate the initial plan (sequence of actions) for a user task."""
         ai_logger.info(f"Creating initial plan for task: {task_description}")
         # Get conversation history from state for context
-        # history = self.agent_state.get_full_context_for_llm() # Need this method
-        history = self.agent_state.conversation_history # Placeholder
+        history = self.agent_state.get_full_context_for_llm()
 
         # Generate prompt using a helper from prompts.py
-        # prompt = prompts.planning_prompt(task_description, history) # Need prompts module
-
-        # Basic planning prompt for now
-        prompt = f"""
-        User Request: "{task_description}"
-
-        Based on this request and previous conversation history, create a plan to accomplish this task using the available tools.
-        Respond with a JSON array of action objects.
-        If you need more information from the user before creating a plan,
-        respond with a single action: {{"action": "ask_human", "parameters": {{"question": "Your question here"}}}}
-        """
+        prompt = prompts.planning_prompt(task_description, history)
         ai_logger.debug(f"Prompt for initial plan:\n{prompt}")
 
         # Call the LLM
-        # llm_response = await self._call_llm(prompt, history) # Need history parameter in _call_llm
-        llm_response = await self._call_llm(prompt) # Placeholder call
+        llm_response = await self._call_llm(prompt, history)
         ai_logger.debug(f"Raw LLM response for initial plan:\n{llm_response}")
 
         # Parse the LLM's response into a structured plan
@@ -105,29 +66,14 @@ class UnifiedLLMAgent:
         ai_logger.debug(f"Task:\n{json.dumps(task, indent=2)}")
         ai_logger.debug(f"Result:\n{json.dumps(result, indent=2)}")
         # Get conversation history and current state from agent_state
-        # history = self.agent_state.get_full_context_for_llm() # Need this method
-        history = self.agent_state.conversation_history # Placeholder
+        history = self.agent_state.get_full_context_for_llm()
 
         # Generate prompt for reflection
-        # prompt = prompts.reflection_prompt(task, result, history) # Need prompts module
-
-        # Basic reflection prompt for now
-        prompt = f"""
-        You previously executed a task and got the following result:
-        Task: {json.dumps(task, indent=2)}
-        Result: {json.dumps(result, indent=2)}
-
-        Based on this result and the overall task goal (in history), decide the next step:
-        1. If the overall task is now complete, respond with a single action: {{"type": "task_complete"}}
-        2. If further actions are needed to achieve the goal, provide a JSON array of those action objects.
-        3. If the result is ambiguous, indicates an error requiring human help, or you need more information to proceed, respond with: {{"type": "awaiting_human_input", "question": "Your question/request to the human"}}
-        4. If the result provides information the user should see but no further action or human input is needed immediately, respond with: {{"type": "info", "information": "Information to display"}}
-        """
+        prompt = prompts.reflection_prompt(task, result, history)
         ai_logger.debug(f"Prompt for reflection:\n{prompt}")
 
         # Call the LLM
-        # llm_response = await self._call_llm(prompt, history) # Need history parameter
-        llm_response = await self._call_llm(prompt) # Placeholder call
+        llm_response = await self._call_llm(prompt, history)
         ai_logger.debug(f"Raw LLM response for reflection:\n{llm_response}")
 
         # Parse the LLM's response into a structured action/decision
@@ -136,34 +82,19 @@ class UnifiedLLMAgent:
         
         return action # Should be Dict with "type" key
 
-    # NOTE: The implementation plan also included process_human_input here.
-    # This could be kept here or moved to AgentLoop or HumanInteractionHandler
-    # depending on where the logic for *processing* human input with the LLM fits best.
-    # Keeping it in LLM Agent makes sense if LLM needs to process the input to make a new plan.
     async def process_human_input_with_llm(self, human_input_result: Dict[str, Any]) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
         """Process human input with the LLM to generate subsequent actions."""
         # Get relevant context from state
-        # history = self.agent_state.get_full_context_for_llm() # Need this method
-        # task_context = human_input_result.get("request", {}).get("context") # Could store context with the request
+        history = self.agent_state.get_full_context_for_llm()
         
         # Generate prompt using human input and context
-        # prompt = prompts.human_input_processing_prompt(task_context, human_input_result["response"]) # Need prompts module
-        
-        # Basic prompt for processing human input
-        prompt = f"""
-        The human provided the following input in response to a request:
-        Human Input: {human_input_result.get("response")}
-        Original Request: {json.dumps(human_input_result.get("request", {}), indent=2)}
-
-        Based on this input and the conversation history, provide the next steps as a JSON array of action objects.
-        If the human input indicates the task is complete, respond with {{"type": "task_complete"}}.
-        If the human input requires further clarification, respond with {{"type": "awaiting_human_input", "question": "..."}}.
-        """
+        task_context = human_input_result.get("request", {})
+        human_input = human_input_result.get("response", "")
+        prompt = prompts.human_input_processing_prompt(task_context, human_input, history)
         ai_logger.debug(f"Prompt for reflection:\n{prompt}")
 
         # Call the LLM
-        # llm_response = await self._call_llm(prompt, history) # Need history parameter
-        llm_response = await self._call_llm(prompt) # Placeholder call
+        llm_response = await self._call_llm(prompt, history)
         ai_logger.debug(f"Raw LLM response for reflection:\n{llm_response}")
 
         # Parse the LLM's response into actions or a completion signal
@@ -356,7 +287,6 @@ class UnifiedLLMAgent:
             
             ai_logger.warning("LLM call failed! Using generic fallback response")
             return '[{"action": "provide_information", "parameters": {"information": "I encountered an error connecting to the LLM. Please try again or check your connection."}}]'
-            # The rest of the code in this method remains the same
 
     def _parse_plan_from_response(self, response_text: str) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
         """Extract structured plan (list of actions) from LLM text response."""
@@ -389,6 +319,10 @@ class UnifiedLLMAgent:
             elif isinstance(parsed_response, dict) and "type" in parsed_response:
                 ai_logger.info(f"Parsed response as structured dict with type: {parsed_response['type']}")
                 return parsed_response
+            
+            elif isinstance(parsed_response, dict) and "action" in parsed_response:
+                ai_logger.info("Parsed a single action object, wrapping in a list to form a valid plan.")
+                return [parsed_response]
 
             else:
                 ai_logger.warning(f"Parsed JSON is not a recognized format: {parsed_response}")

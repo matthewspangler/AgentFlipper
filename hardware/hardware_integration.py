@@ -10,10 +10,8 @@ from typing import Dict, Any, Optional
 from ui import Colors
 from hardware.hardware_manager import FlipperZeroManager
 from rag.rag_retriever import RAGRetriever
-from agent.llm_agent import UnifiedLLMAgent # Import UnifiedLLMAgent
-from agent.agent_state import AgentState # Import AgentState
-# Assuming AgentState needs to be imported here if not available via other imports
-# from .agent_loop.agent_state import AgentState # Uncomment if needed
+from agent.llm_agent import UnifiedLLMAgent
+from agent.agent_state import AgentState
 
 logger = logging.getLogger("AgentFlipper")
 
@@ -45,19 +43,9 @@ def initialize_rag_system(args: argparse.Namespace) -> Optional[RAGRetriever]:
     rag = RAGRetriever()
     return rag if rag.initialize(args) else None
 
-# Assuming AgentState is passed in from the calling code (e.g., main.py)
-# If AgentState is managed and accessible globally or via another service locator pattern,
-# this signature might not need to change, and we'd get agent_state differently.
-# Based on UnifiedLLMAgent.__init__ requiring agent_state, passing it seems most direct.
-
-def configure_llm_agent(config: Dict[str, Any], agent_state: AgentState, # Added agent_state parameter
-                       args: argparse.Namespace) -> UnifiedLLMAgent: # Changed return type
+def configure_llm_agent(config: Dict[str, Any], agent_state: AgentState,
+                        args: argparse.Namespace) -> UnifiedLLMAgent:
     """Initialize and configure the LLM agent with runtime parameters."""
-    # Instantiate UnifiedLLMAgent instead of LLMAgent
-    # UnifiedLLMAgent constructor takes config and agent_state
     agent = UnifiedLLMAgent(config, agent_state)
-
-    # The config dictionary passed likely already has overrides applied,
-    # so UnifiedLLMAgent can access them directly.
 
     return agent

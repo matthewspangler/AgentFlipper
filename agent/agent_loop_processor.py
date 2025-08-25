@@ -8,11 +8,8 @@ from typing import Optional, List, Tuple, Dict, Any # Added Dict, Any for task s
 
 from hardware.hardware_manager import FlipperZeroManager
 from .llm_agent import UnifiedLLMAgent
-from .agent_loop.agent_state import AgentState # Assuming AgentState is here
-
-# Assuming ToolExecutor and TaskManager might be needed here or imported
-# from .agent_loop.task_manager import TaskManager # Example import
-# from .agent_loop.tool_executor import ToolExecutor # Example import
+from .agent_state import AgentState
+from .tool_executor import ToolExecutor
 
 logger = logging.getLogger("AgentFlipper")
 
@@ -33,11 +30,9 @@ async def process_user_request_unified(app_instance: Any, user_input: str, flipp
     logger.info(f"Processing user request: {user_input} with UnifiedLLMAgent")
 
     # 1. Receive User Input & Initialize State/Context
-    # Assuming AgentState is initialized elsewhere and passed in.
-    # Update state with the new user input.
-    agent_state.add_user_message(user_input) # Assuming AgentState has this method
-    agent_state.clear_task_queue() # Assuming AgentState manages the task queue
-    agent_state.reset_loop_count() # Assuming AgentState tracks loop iterations
+    agent_state.add_user_message(user_input)
+    agent_state.clear_task_queue()
+    agent_state.reset_loop_count()
     agent_state.set_awaiting_human_input(False, "") # Ensure human input flag is off
 
     # Check device connection before proceeding with LLM calls
@@ -52,12 +47,10 @@ async def process_user_request_unified(app_instance: Any, user_input: str, flipp
 
     # The core Plan, Act, Reflect loop
     while True:
-        # Guard against excessive loop iterations (instead of recursion depth)
-        if agent_state.get_loop_count() >= unified_llm_agent.max_recursion_depth: # Assuming UnifiedLLMAgent retains this config
+        # Guard against excessive loop iterations
+        if agent_state.get_loop_count() >= unified_llm_agent.max_recursion_depth:
             logger.warning(f"Maximum loop iterations reached ({unified_llm_agent.max_recursion_depth}), stopping task.")
             await app_instance.display_message(f"\nMaximum loop iterations reached ({unified_llm_agent.max_recursion_depth}). Please issue a new command to continue.")
-            # Assuming summary generation logic might be handled differently or needed elsewhere
-            # For now, explicitly stopping.
             break # Exit the loop
 
         agent_state.increment_loop_count() # Increment loop counter
@@ -66,7 +59,6 @@ async def process_user_request_unified(app_instance: Any, user_input: str, flipp
         if agent_state.is_task_queue_empty() and not agent_state.is_awaiting_human_input():
             # Only plan if the task queue is empty and not waiting for human input
             await app_instance.display_message(f"[purple]Planning...[/purple]")
-            # Pass agent_state to create_initial_plan for context if needed
             plan_result = await unified_llm_agent.create_initial_plan(agent_state.get_current_task() or user_input) # Use current task or user input
 
             # Handle plan_result (list of tasks, awaiting_human_input, etc.)
@@ -74,7 +66,7 @@ async def process_user_request_unified(app_instance: Any, user_input: str, flipp
 
             if isinstance(plan_result, list):
                 # If plan is a list of tasks, add them to the queue
-                agent_state.add_plan_to_task_queue(plan_result) # Assuming AgentState has this method
+                agent_state.add_plan_to_task_queue(plan_result)
                 await app_instance.display_message(f"[green]Plan received. Executing tasks...[/green]")
             elif isinstance(plan_result, dict) and plan_result.get("type") == "awaiting_human_input":
                 # If planning requires human input
@@ -93,15 +85,13 @@ async def process_user_request_unified(app_instance: Any, user_input: str, flipp
 
         # 7. Execute Task (if queue is not empty and not awaiting human input)
         if not agent_state.is_task_queue_empty() and not agent_state.is_awaiting_human_input():
-            next_task = agent_state.get_next_task() # Assuming AgentState manages queue and returns next task
+            next_task = agent_state.get_next_task()
             if next_task:
                 await app_instance.display_message(f"[purple]Executing Task: {next_task.get('action', 'Unknown')}[/purple]")
 
-                # TODO: Integrate ToolExecutor here
-                # The ToolExecutor would take the task (action and parameters)
-                # and call the appropriate function (e.g., flipper_agent.execute_commands)
-                # This is a placeholder for ToolExecutor execution
-                task_result = {"status": "simulated_success", "response": "Simulated result"} # Replace with actual execution
+                # Execute task using ToolExecutor
+                tool_executor = ToolExecutor(agent_state, app_instance)
+                task_result = await tool_executor.execute_task(next_task)
                 # Example execution logic for pyflipper:
                 if next_task.get("action") == "pyflipper":
                     commands = next_task.get("parameters", {}).get("commands", [])
@@ -114,7 +104,7 @@ async def process_user_request_unified(app_instance: Any, user_input: str, flipp
                          results = await flipper_agent.execute_commands(commands, app_instance)
                          task_result = {"status": "executed", "results": results}
                          # Add results to state for reflection
-                         agent_state.add_task_result(next_task, task_result) # Assuming AgentState tracks task results
+                         agent_state.add_task_result(next_task, task_result)
                     else:
                         task_result = {"status": "error", "response": "No commands provided for pyflipper"}
                         agent_state.add_task_result(next_task, task_result)
@@ -151,7 +141,6 @@ async def process_user_request_unified(app_instance: Any, user_input: str, flipp
 
                 # 9. Reflect
                 # Provide the task and its result to the LLM for reflection
-                # Assuming agent_state has methods to get context for reflection
                 reflection_result = await unified_llm_agent.reflect_and_plan_next(next_task, task_result)
                 logger.debug(f"Reflection result: {reflection_result}")
 
@@ -215,4 +204,3 @@ async def process_user_request_unified(app_instance: Any, user_input: str, flipp
 
     # End of the main loop
     logger.info("Exiting process_user_request loop.")
-    # Consider final summary generation here if not handled by a task_complete signal

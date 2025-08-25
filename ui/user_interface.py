@@ -15,22 +15,17 @@ from textual.widgets import Header, Footer, Input, RichLog, Tree # Added Tree fo
 from textual.containers import Container
 from textual.reactive import var
 from textual.worker import Worker, get_current_worker
-import asyncio # Import asyncio
-from ui.task_list_view import TaskListTreeView # Import the new task list view
+from ui.task_list_view import TaskListTreeView
 
-# Placeholder imports for now to avoid circular dependencies and enable initial structure
-AgentLoop = Any
-AgentState = Any
-HumanInteractionHandler = Any
-UnifiedLLMAgent = Any # Still needed for type hinting in on_mount for clarity
-TaskManager = Any # Still needed for type hinting in on_mount for clarity
-ToolExecutor = Any # Still needed for type hinting in on_mount for clarity
+from agent.agent_loop import AgentLoop
+from agent.agent_state import AgentState
+from agent.llm_agent import UnifiedLLMAgent
+from agent.task_manager import TaskManager
+from agent.tool_executor import ToolExecutor
+from ui.human_interaction import HumanInteractionHandler
 
 import logging
 logger = logging.getLogger("AgentFlipper")
-
-# Remove the old process_request_in_worker function as its logic is replaced by AgentLoop
-# async def process_request_in_worker(...) -> None: ... # Function removed
 
 
 class AgentFlipper(App):
@@ -136,9 +131,7 @@ class AgentFlipper(App):
         # Pass the app instance (self) to components that need it for UI updates
         self.agent_loop.app_instance = self
         self.human_interaction_handler.app_instance = self
-        # Note: AgentState might also need app_instance if its methods display messages
-        # self.agent_state.app_instance = self
-        self.agent_loop.tool_executor.app_instance = self # Pass to tool executor
+        self.agent_loop.tool_executor.app_instance = self
 
         self.input_widget = Input(placeholder="Enter command/query, type '/help' for assistance...")
         # Disable highlighting to prevent Textual from overriding colors for paths, numbers, etc.
@@ -146,7 +139,9 @@ class AgentFlipper(App):
         self.main_display = RichLog(id="main-display", wrap=True, highlight=False, markup=True) # Use RichLog
         self.main_display.selectable = True # Enable text selection after creation
         self.main_display.can_focus = True # Allow the RichLog to receive focus
-        # self.task_in_progress = var(False) # task_in_progress handled by AgentState/TaskManager now (line removed)
+        
+        # Initialize the human input event
+        self._human_input_received = asyncio.Event()
 
     def compose(self) -> ComposeResult:
         """Compose the application UI."""
@@ -209,12 +204,6 @@ class AgentFlipper(App):
         # Write to the RichLog for display in the Textual UI
         self.main_display.write(message)
         
-        # The message is now logged via the logger in main.py via display_message
-        # No longer need to print directly to standard output
-
-    # Add an asyncio.Event to signal when human input is received
-    # This should ideally be initialized in __init__
-    # self._human_input_received = asyncio.Event()
 
     async def on_input_submitted(self, message: Input.Submitted) -> None:
         """Handle user input submission."""
@@ -252,8 +241,6 @@ class AgentFlipper(App):
             self._human_input_received.clear()
             self._human_input_received.set()
 
-            # Optional: Change input box appearance back if it was modified
-            # self.input_widget.disabled = False # Example
             
             # The AgentLoop will resume processing on its next iteration or after awaiting the event
             await self.display_message(f"[yellow]Received human input. Resuming agent loop...[/]")
@@ -270,22 +257,16 @@ class AgentFlipper(App):
                 group="agent_processing"
             )
 
-    # Need to add _human_input_received = asyncio.Event() to __init__
 
     async def handle_special_commands(self, input_text: str) -> None:
         """Process slash commands within the Textual app."""
         command = input_text[1:].lower()
-        # Special commands might need to be handled differently if agent is awaiting human input
-        # For now, allow them to interrupt or be handled in parallel?
-        # Let's keep it simple: special commands are handled regardless of state.
         if command == 'help':
             await self.show_help()
         elif command == 'exit' or command == 'quit':
             self.exit()
-        elif command == 'tasks': # Changed command name here
-            await self.toggle_task_sidebar() # Call the toggle method
-        # elif command == 'ask': # The 'ask' command is replaced by the agent's HITL flow
-        #     await self.switch_to_ask_mode() # This old logic is removed
+        elif command == 'tasks':
+            await self.toggle_task_sidebar()
         else:
             await self.handle_unknown_command(command)
         # return is implicit
@@ -310,25 +291,14 @@ class AgentFlipper(App):
             await self.display_message(f"[red]Error toggling task sidebar: {e}[/red]")
 
 
-    # Remove the old switch_to_ask_mode function
-    # async def switch_to_ask_mode(self) -> None: ...
 
     async def show_help(self) -> None:
         """Display available commands."""
         help_text = f"\n[green]Available Commands:[/]\n"
         help_text += f"  [green]/exit, /quit[/] - Terminate the program\n"
-        help_text += f"  [green]/tasks[/] - Show or hide the task list sidebar\n" # Changed command name in help
-        # help_text += f"  [green]/ask[/] - Enter question/answer mode\n" # Remove old ask command help
+        help_text += f"  [green]/tasks[/] - Show or hide the task list sidebar\n"
         help_text += f"  [green]/help[/] - Show this help message"
-        # Add help for interacting with the agent when awaiting human input?
-        # e.g., how to respond to different request types. This might be handled in display_human_request.
         await self.display_message(help_text)
-        # return is implicit
-    async def switch_to_ask_mode(self) -> None:
-        """Handle mode transition."""
-        await self.display_message(f"\nSwitching to inquiry mode...[/]")
-        # TODO: Implement actual ask mode logic
-
 
     async def handle_unknown_command(self, command: str) -> None:
         """Handle invalid slash commands."""
@@ -360,10 +330,9 @@ class AgentFlipper(App):
 def run_interactive_loop(
     agent_loop: AgentLoop,
     human_interaction_handler: HumanInteractionHandler,
-    flipper_agent: Any, # Accept flipper_agent
-    llm_agent: UnifiedLLMAgent # Accept llm_agent
+    flipper_agent: Any,
+    llm_agent: UnifiedLLMAgent
 ):
     """Run the main user interaction loop using Textual."""
-    # Pass the new agent_loop, human_interaction_handler, flipper_agent, and llm_agent instances to the app
     app = AgentFlipper(agent_loop, human_interaction_handler, flipper_agent, llm_agent)
     app.run()
