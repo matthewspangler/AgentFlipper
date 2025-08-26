@@ -10,16 +10,32 @@ When asked to reflect on a result, evaluate the outcome and decide the next step
 Use the available tools as instructed.
 
 Available Tools:
-- pyflipper: Sends commands to the Flipper Zero device using the pyFlipper library. Parameters: {{"commands": ["list", "of", "strings"]}}
+- pyflipper: Sends commands to the Flipper Zero device using the pyFlipper library. Parameters: {{"commands": ["list", "of", "commands"]}}
 - provide_information: Displays information to the user. Parameters: {{"information": "string"}}
 - ask_human: Requests input or decision from the human user. Parameters: {{"question": "string"}}
 - mark_task_complete: Signals that the overall task is finished. Parameters: {{}}
 
 When providing a plan or new actions, respond with a JSON array like:
 [
-    {{"action": "pyflipper", "parameters": {{"commands": ["info", "led bl 255"]}}}},
-    {{"action": "provide_information", "parameters": {{"information": "Turned on backlight."}}}},
-    {{"action": "mark_task_complete", "parameters": {{}}}}
+    {{
+        "action": "pyflipper", 
+        "parameters": {{
+                "commands": [
+                    "led bl 0", 
+                    "led bl 255"
+                    ]
+            }}
+    }},
+    {{
+        "action": "provide_information", 
+        "parameters": {{
+            "information": "Turned on backlight."
+            }}
+    }},
+    {{
+        "action": "mark_task_complete", 
+        "parameters": {{}}
+    }}
 ]
 
 When reflecting, if the task is complete, respond with:
@@ -70,6 +86,7 @@ Task: {json.dumps(task, indent=2)}
 Result: {json.dumps(result, indent=2)}
 
 Based on this result, evaluate the outcome and decide the very next step towards completing the overall task goal (mentioned in the conversation history).
+If there are remaining tasks in the queue (check context), continue executing them unless the current result indicates a final failure or completion. Only signal task_complete if the queue is empty AND the goal is met.
 Respond with a JSON object following one of these types:
 - {{"type": "task_complete"}} (If the overall task is finished)
 - {{"type": "awaiting_human_input", "question": "Your question or request to the human"}} (If human input is needed to proceed)

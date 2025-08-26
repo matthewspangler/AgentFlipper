@@ -318,6 +318,9 @@ class UnifiedLLMAgent:
 
             elif isinstance(parsed_response, dict) and "type" in parsed_response:
                 ai_logger.info(f"Parsed response as structured dict with type: {parsed_response['type']}")
+                if parsed_response.get("type") == "add_tasks" and "tasks" in parsed_response:
+                    ai_logger.info("Extracting tasks from 'add_tasks' structure for initial plan.")
+                    return parsed_response["tasks"]
                 return parsed_response
             
             elif isinstance(parsed_response, dict) and "action" in parsed_response:

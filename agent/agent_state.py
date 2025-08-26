@@ -77,4 +77,13 @@ class AgentState:
         context = self.conversation_history.copy()
         if self.current_task:
             context.append({"role": "system", "content": f"Current task: {self.current_task}"})
+        if self.task_queue:
+            task_list_str = []
+            for task in self.task_queue[:3]:
+                task_list_str.append(f"- {task.get('action')}: {task.get('parameters', {})}")
+            
+            if len(self.task_queue) > 3:
+                task_list_str.append(f"...and {len(self.task_queue) - 3} more task(s).")
+                
+            context.append({"role": "system", "content": f"Remaining tasks in queue:\n" + "\n".join(task_list_str)})
         return context

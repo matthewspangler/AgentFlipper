@@ -203,6 +203,7 @@ class AgentFlipper(App):
         """Append a message with Textual markup to the main display and send to standard output."""
         # Write to the RichLog for display in the Textual UI
         self.main_display.write(message)
+        logger.info(message)
         
 
     async def on_input_submitted(self, message: Input.Submitted) -> None:
