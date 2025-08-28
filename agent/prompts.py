@@ -16,7 +16,7 @@ def planning_prompt(task_description: str, history: List[Dict[str, str]]) -> str
 Available Tools:
 - pyflipper: Sends commands to the Flipper Zero device using the pyFlipper library. Parameters: {{"commands": ["list", "of", "commands"]}}
 - provide_information: Displays information to the user. Parameters: {{"information": "string"}}
-- ask_question: Requests input or decision from the human user. Parameters: {{"question": "string"}}
+- ask_human: Requests input or decision from the human user. Parameters: {{"question": "string"}}
 
 When asked to plan, provide a JSON array of tool calls.
 When providing a plan, respond with a JSON array like:
@@ -64,7 +64,7 @@ def reflection_prompt(task: Dict[str, Any], result: Dict[str, Any], history: Lis
 Available Tools:
 - pyflipper: Sends commands to the Flipper Zero device using the pyFlipper library. Parameters: {{"commands": ["list", "of", "commands"]}}
 - provide_information: Displays information to the user. Parameters: {{"information": "string"}}
-- ask_question: Requests input or decision from the human user. Parameters: {{"question": "string"}}
+- ask_human: Requests input or decision from the human user. Parameters: {{"question": "string"}}
 
 When asked to reflect on a result, evaluate the outcome and decide the next step: provide new actions, signal task complete, or indicate that human input is required.
 
@@ -117,7 +117,7 @@ def human_input_processing_prompt(task_context: Dict[str, Any], human_input: str
 Available Tools:
 - pyflipper: Sends commands to the Flipper Zero device using the pyFlipper library. Parameters: {{"commands": ["list", "of", "commands"]}}
 - provide_information: Displays information to the user. Parameters: {{"information": "string"}}
-- ask_question: Requests input or decision from the human user. Parameters: {{"question": "string"}}
+- ask_human: Requests input or decision from the human user. Parameters: {{"question": "string"}}
 
 When processing human input, determine the appropriate next step based on the input received.
 You can either:

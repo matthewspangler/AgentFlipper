@@ -68,7 +68,7 @@ class TaskListTreeView(Tree[None]):
             elif tool_name == "provide_information" and "information" in parameters:
                  task_description = f"Info: {parameters['information'][:30]}..." if len(parameters['information']) > 30 else f"Info: {parameters['information']}"
                  tool_info = tool_name
-            elif tool_name == "ask_question" and "question" in parameters:
+            elif tool_name == "ask_human" and "question" in parameters:
                  task_description = f"Ask: {parameters['question'][:30]}..." if len(parameters['question']) > 30 else f"Ask: {parameters['question']}"
                  tool_info = tool_name
             else:

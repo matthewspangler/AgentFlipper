@@ -16,7 +16,7 @@ class ToolExecutor:
         return {
             "pyflipper": self._execute_flipper_commands,
             "provide_information": self._provide_information,
-            "ask_question": self._ask_question,
+            "ask_human": self._ask_human,
             # TODO: Add other tools as they are implemented
         }
         
@@ -89,7 +89,7 @@ class ToolExecutor:
         await self.app_instance.display_message(f"ℹ️ {information}")
         return {"displayed": True, "information": information}
         
-    async def _ask_question(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    async def _ask_human(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
         Signals that a question needs to be asked to the human.
         This tool's execution essentially triggers the HITL flow managed by AgentLoop/HumanInteractionHandler.
