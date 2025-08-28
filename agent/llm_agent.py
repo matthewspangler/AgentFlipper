@@ -487,6 +487,33 @@ class UnifiedLLMAgent:
                     if parsed_response["type"] == "info" and "information" not in parsed_response:
                         ai_logger.warning("'info' missing 'information' field")
                         return {"type": "unhandled_reflection", "message": "'info' missing information field"}
+                    
+                    # For when the LLM asks for human input because of command failures,
+                    # check if the reflection content already contains evidence that
+                    # the task's goal was actually accomplished despite the command failure
+                    if parsed_response["type"] == "awaiting_human_input" and "question" in parsed_response:
+                        question = parsed_response["question"].lower()
+                        
+                        # Only intercept when the question is about a command failure
+                        if "command was not found" in question or "could not find command" in question:
+                            # Check if the LLM's raw response contains indications that
+                            # essential commands succeeded and main goal was accomplished
+                            reflection_content = response_text.lower()
+                            
+                            # Look for phrases indicating the main goal was achieved
+                            completion_indicators = [
+                                "primary goal was accomplished",
+                                "main objective was achieved",
+                                "core task was completed",
+                                "successfully turned on and off",
+                                "overall task was completed"
+                            ]
+                            
+                            for indicator in completion_indicators:
+                                if indicator in reflection_content:
+                                    ai_logger.info(f"LLM indicates task complete despite command failures: '{indicator}'")
+                                    ai_logger.info("Converting awaiting_human_input to task_complete")
+                                    return {"type": "task_complete"}
 
                     ai_logger.info(f"Successfully parsed reflection with type: {parsed_response['type']}")
                     return parsed_response

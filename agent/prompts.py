@@ -25,15 +25,15 @@ When providing a plan, respond with a JSON array like:
         "type": "pyflipper",
         "parameters": {{
                 "commands": [
-                    "led bl 0",
-                    "led bl 255"
+                    "led bl 255",
+                    "led bl 0"
                     ]
             }}
     }},
     {{
         "type": "provide_information",
         "parameters": {{
-            "information": "Turned on backlight."
+            "information": "Turned backlight on and then off."
             }}
     }}
 ]
@@ -42,6 +42,12 @@ Previous Conversation History:
 {history_text}
 
 User Request: "{task_description}"
+
+IMPORTANT PLANNING GUIDELINES:
+1. For multi-step tasks (like "turn on X and then turn off X"), include ALL steps in your plan
+2. Pay careful attention to instructions with sequential actions ("do X and then do Y")
+3. Always include the complete sequence of commands needed to fulfill the entire request
+4. If the user request contains multiple actions, ensure ALL actions are represented in your plan
 
 Based on the user's request and the conversation history, create a detailed plan (a JSON array of type objects) to accomplish this task using the available tools.
 Focus on the next logical steps.
@@ -84,9 +90,17 @@ Task: {json.dumps(task, indent=2)}
 Result: {json.dumps(result, indent=2)}
 
 Based on this result, evaluate the outcome and decide the very next step towards completing the overall task goal (mentioned in the conversation history).
-If there are remaining tasks in the queue (check context), continue executing them unless the current result indicates a final failure or completion. Only signal task_complete if the queue is empty AND the goal is met.
+Consider the following important guidelines:
+1. Focus on whether the ESSENTIAL commands succeeded, even if some non-critical commands failed
+2. In multi-step tasks, ONLY mark as complete when ALL steps are finished (e.g., for "turn on AND off", both actions must be completed)
+3. Check if the user requested multiple sequential actions (like "do X and then Y") and verify ALL have been done
+
+If there are remaining tasks in the queue (check context), continue executing them unless the current result indicates a final failure or completion.
+Only signal task_complete if either:
+- The queue is empty AND ALL parts of the goal are met, OR
+- ALL parts of the primary objective have been accomplished despite intermediate command failures
 Respond with a JSON object following one of these types:
-- {{"type": "task_complete"}} (If the overall task is finished)
+- {{"type": "task_complete"}} (If the overall task is finished or primary objective accomplished)
 - {{"type": "awaiting_human_input", "question": "Your question or request to the human"}} (If human input is needed to proceed)
 - {{"type": "add_tasks", "tasks": [...]}} (If more actions are needed - provide a JSON array of type objects)
 - {{"type": "info", "information": "Information to display to the user"}} (If the result provides information but no action is needed immediately)
