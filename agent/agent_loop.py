@@ -75,7 +75,7 @@ class AgentLoop:
                 plan = await self.llm_agent.create_initial_plan(current_goal)
 
 
-                # Handle the plan returned by LLM. It can be a list of actions or a signal dictionary.
+                # Handle the plan returned by LLM. It can be a list of tool calls or a signal dictionary.
                 if isinstance(plan, dict) and plan.get("type") == "awaiting_human_input":
                     # LLM decided it needs human input to plan. State is set by llm_agent.
                     await self.app_instance.display_message("👤 LLM is requesting human input to proceed with planning.")
@@ -91,7 +91,7 @@ class AgentLoop:
                     await self.app_instance.display_message(f"[#ff9722]{'─' * 79}[/#ff9722]")
                     await self.app_instance.display_message(f"📝 Plan received. Adding {len(plan)} steps to task queue.")
                     for i, step in enumerate(plan, 1):
-                        await self.app_instance.display_message(f"{i}. {step.get('action')}: {step.get('parameters')}")
+                        await self.app_instance.display_message(f"{i}. {step.get('type')}: {step.get('parameters')}")
                     await self.app_instance.display_message(f"[#ff9722]{'─' * 79}[/#ff9722]")
                     self.task_manager.add_plan_to_queue(plan)
                     await self.app_instance.update_task_list_ui()
@@ -116,7 +116,7 @@ class AgentLoop:
                break
 
             await self.app_instance.update_task_list_ui() # Update UI after getting task
-            await self.app_instance.display_message(f"▶️  Executing: {task.get('action')}...")
+            await self.app_instance.display_message(f"▶️  Executing: {task.get('type')}...")
 
             # Execute the task
             result = await self.tool_executor.execute_task(task)
@@ -129,7 +129,7 @@ class AgentLoop:
 
             # If task execution failed, consider asking for human help
             if not result.get("success", False):
-                await self.app_instance.display_message(f"⚠️ Error executing {task.get('action')}: {result.get('error')}")
+                await self.app_instance.display_message(f"⚠️ Error executing {task.get('type')}: {result.get('error')}")
                 if self.agent_state.config.get("human_error_resolution", False):
                     await self.human_interaction.handle_error_resolution(
                         result.get("error", "Unknown error"),

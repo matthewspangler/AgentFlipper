@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional, List
 SYSTEM_PROMPT = """You are an AI assistant that helps control a Flipper Zero device via its command-line interface.
 Interpret the user's requests into specific Flipper Zero CLI commands.
 You operate in a Plan, Act, and Reflect cycle.
-When asked to plan, provide a JSON array of actions (tool calls).
+When asked to plan, provide a JSON array of tool calls.
 When asked to reflect on a result, evaluate the outcome and decide the next step: provide new actions, signal task complete, or indicate that human input is required.
 Use the available tools as instructed.
 
@@ -18,22 +18,22 @@ Available Tools:
 When providing a plan or new actions, respond with a JSON array like:
 [
     {{
-        "action": "pyflipper", 
+        "type": "pyflipper",
         "parameters": {{
                 "commands": [
-                    "led bl 0", 
+                    "led bl 0",
                     "led bl 255"
                     ]
             }}
     }},
     {{
-        "action": "provide_information", 
+        "type": "provide_information",
         "parameters": {{
             "information": "Turned on backlight."
             }}
     }},
     {{
-        "action": "mark_task_complete", 
+        "type": "mark_task_complete",
         "parameters": {{}}
     }}
 ]
@@ -45,7 +45,7 @@ When reflecting, if human input is needed, respond with:
 {{"type": "awaiting_human_input", "question": "What color LED should I turn on?"}}
 
 When reflecting, if more actions are needed, respond with:
-{{"type": "add_tasks", "tasks": [...]}} # JSON array of action objects
+{{"type": "add_tasks", "tasks": [...]}} # JSON array of type objects
 
 When reflecting, if you just have information to provide:
 {{"type": "info", "information": "The battery level is 85%."}}
@@ -65,10 +65,10 @@ Previous Conversation History:
 
 User Request: "{task_description}"
 
-Based on the user's request and the conversation history, create a detailed plan (a JSON array of action objects) to accomplish this task using the available tools.
+Based on the user's request and the conversation history, create a detailed plan (a JSON array of type objects) to accomplish this task using the available tools.
 Focus on the next logical steps.
 If you need more information from the user before creating a plan,
-respond ONLY with the JSON for an 'awaiting_human_input' action: {{"type": "awaiting_human_input", "question": "Your specific question here"}}
+respond ONLY with the JSON for an 'awaiting_human_input' response: {{"type": "awaiting_human_input", "question": "Your specific question here"}}
 """
     
 def reflection_prompt(task: Dict[str, Any], result: Dict[str, Any], history: List[Dict[str, str]]) -> str:
@@ -90,7 +90,7 @@ If there are remaining tasks in the queue (check context), continue executing th
 Respond with a JSON object following one of these types:
 - {{"type": "task_complete"}} (If the overall task is finished)
 - {{"type": "awaiting_human_input", "question": "Your question or request to the human"}} (If human input is needed to proceed)
-- {{"type": "add_tasks", "tasks": [...]}} (If more actions are needed - provide a JSON array of action objects)
+- {{"type": "add_tasks", "tasks": [...]}} (If more actions are needed - provide a JSON array of type objects)
 - {{"type": "info", "information": "Information to display to the user"}} (If the result provides information but no action is needed immediately)
 
 Choose only ONE of these response types. Do not include any other text before or after the JSON.
@@ -110,7 +110,7 @@ The human user just provided the following input:
 Human Input: "{human_input}"
 Original Request Context: {json.dumps(task_context.get("human_input_request", {}), indent=2)}
 
-Based on this human input and the overall task goal (in history), provide the next steps as a JSON array of action objects.
+Based on this human input and the overall task goal (in history), provide the next steps as a JSON array of type objects.
 If the human input indicates the task is complete, respond with {{"type": "task_complete"}}.
 If the human input requires further clarification, respond with {{"type": "awaiting_human_input", "question": "Your question here"}}.
 """

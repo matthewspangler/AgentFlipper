@@ -21,8 +21,8 @@ class ToolExecutor:
         }
         
     async def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute a task based on its type and action."""
-        tool_name = task.get("action")
+        """Execute a task based on its type."""
+        tool_name = task.get("type")
         parameters = task.get("parameters", {})
         task_id = task.get("id", "unknown_task")
 

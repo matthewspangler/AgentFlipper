@@ -80,7 +80,7 @@ class AgentState:
         if self.task_queue:
             task_list_str = []
             for task in self.task_queue[:3]:
-                task_list_str.append(f"- {task.get('action')}: {task.get('parameters', {})}")
+                task_list_str.append(f"- {task.get('type')}: {task.get('parameters', {})}")
             
             if len(self.task_queue) > 3:
                 task_list_str.append(f"...and {len(self.task_queue) - 3} more task(s).")

@@ -40,7 +40,7 @@ class TaskManager:
     def _create_task_from_user_input(self, user_input: str) -> Dict[str, Any]:
         return {
             "id": str(uuid.uuid4()),
-            "type": "user_request",
+            "source_type": "user_request",
             "content": user_input,
             "status": "pending",
             "created_at": time.time(),
@@ -50,8 +50,8 @@ class TaskManager:
     def _create_task_from_plan_item(self, plan_item: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "id": str(uuid.uuid4()),
-            "type": "planned_action",
-            "action": plan_item.get("action"),
+            "source_type": "planned_action",
+            "type": plan_item.get("type"),
             "parameters": plan_item.get("parameters", {}),
             "status": "pending",
             "created_at": time.time(),

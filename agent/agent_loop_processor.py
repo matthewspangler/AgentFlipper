@@ -87,13 +87,13 @@ async def process_user_request_unified(app_instance: Any, user_input: str, flipp
         if not agent_state.is_task_queue_empty() and not agent_state.is_awaiting_human_input():
             next_task = agent_state.get_next_task()
             if next_task:
-                await app_instance.display_message(f"[purple]Executing Task: {next_task.get('action', 'Unknown')}[/purple]")
+                await app_instance.display_message(f"[purple]Executing Task: {next_task.get('type', 'Unknown')}[/purple]")
 
                 # Execute task using ToolExecutor
                 tool_executor = ToolExecutor(agent_state, app_instance)
                 task_result = await tool_executor.execute_task(next_task)
                 # Example execution logic for pyflipper:
-                if next_task.get("action") == "pyflipper":
+                if next_task.get("type") == "pyflipper":
                     commands = next_task.get("parameters", {}).get("commands", [])
                     if commands:
                          await app_instance.display_message(f"{'─' * 79}")
@@ -109,7 +109,7 @@ async def process_user_request_unified(app_instance: Any, user_input: str, flipp
                         task_result = {"status": "error", "response": "No commands provided for pyflipper"}
                         agent_state.add_task_result(next_task, task_result)
 
-                elif next_task.get("action") == "provide_information":
+                elif next_task.get("type") == "provide_information":
                     information = next_task.get("parameters", {}).get("information", "No information provided")
                     await app_instance.display_message(f"{'─' * 79}")
                     await app_instance.display_message(f"# Information:")
@@ -118,7 +118,7 @@ async def process_user_request_unified(app_instance: Any, user_input: str, flipp
                     task_result = {"status": "displayed", "information": information}
                     agent_state.add_task_result(next_task, task_result)
 
-                elif next_task.get("action") == "ask_human":
+                elif next_task.get("type") == "ask_human":
                      question = next_task.get("parameters", {}).get("question", "Can you provide some input?")
                      agent_state.set_awaiting_human_input(True, question)
                      await app_instance.display_message(f"[yellow]? {question}[/yellow]")
@@ -126,16 +126,16 @@ async def process_user_request_unified(app_instance: Any, user_input: str, flipp
                      agent_state.add_task_result(next_task, task_result)
                      break # Pause loop for human input
 
-                elif next_task.get("action") == "mark_task_complete":
+                elif next_task.get("type") == "mark_task_complete":
                      await app_instance.display_message(f"[green]✓ Task marked complete by LLM.[/green]")
                      task_result = {"type": "task_complete"} # Reflect using the 'type' key
                      agent_state.add_task_result(next_task, task_result)
                      # Continue to reflection - reflection should detect task_complete type and break the loop
 
                 else:
-                    logger.warning(f"Unknown tool call: {next_task.get('action')}")
-                    await app_instance.display_message(f"[orange]Received unknown tool call: {next_task.get('action')}[/orange]")
-                    task_result = {"status": "error", "response": f"Unknown tool: {next_task.get('action')}"}
+                    logger.warning(f"Unknown tool call: {next_task.get('type')}")
+                    await app_instance.display_message(f"[orange]Received unknown tool call: {next_task.get('type')}[/orange]")
+                    task_result = {"status": "error", "response": f"Unknown tool: {next_task.get('type')}"}
                     agent_state.add_task_result(next_task, task_result)
                     # Continue to reflection with the error result
 
