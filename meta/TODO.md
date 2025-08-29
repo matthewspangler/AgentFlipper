@@ -6,7 +6,7 @@ This document outlines the planned improvements for the AgentFlipper project, pr
 
 **Reasoning**: These are the highest priority because they address foundational structural issues that affect the entire codebase. Completing these first will provide a more stable and maintainable foundation for future development.
 
-- [ ] **Consolidate the Agent Loop**: Refactor `agent_loop.py` and `agent_loop_processor.py` into a single, definitive `AgentLoop` class to eliminate redundancy.
+- [x] **Consolidate the Agent Loop**: Refactor `agent_loop.py` and `agent_loop_processor.py` into a single, definitive `AgentLoop` class to eliminate redundancy.
 - [ ] **Refactor the LLM Agent**: Extract the complex response parsing logic from `llm_agent.py` into a separate `LLMResponseParser` class to improve modularity.
 - [ ] **Refine Component Initialization**: Refactor the initialization of UI-dependent components in `main.py` to make dependencies more explicit and avoid reliance on a mutable `app_instance` variable.
 - [ ] **Standardize Tool Naming**: Standardize on a single tool name convention (e.g., "ask_human") across the codebase to improve consistency and reduce errors.
@@ -66,3 +66,7 @@ This document outlines the planned improvements for the AgentFlipper project, pr
 - [ ] Implement marker detection in relevant components (likely `agent_loop.py`).
 - [ ] Add marker generation to LLM prompts where appropriate.
 - [ ] Create tests to verify that marker processing works correctly.
+
+## 7. Allow executing natural english scripts
+
+## 8. Come up with end to end testing

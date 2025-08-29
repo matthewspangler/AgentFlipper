@@ -20,7 +20,7 @@ from typing import Dict, Any, Optional, List, Tuple
 
 from rag import RAGRetriever 
 from hardware import establish_flipper_connection, initialize_rag_system, configure_llm_agent
-from ui import Colors, AgentFlipper, run_interactive_loop
+from ui import Colors, AgentFlipper
 from agent import AgentLoop, AgentState, TaskManager, ToolExecutor
 from hardware import HardwareManager, FlipperZeroManager 
 from agent.llm_agent import UnifiedLLMAgent
