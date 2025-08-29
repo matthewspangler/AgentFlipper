@@ -70,3 +70,20 @@ This document outlines the planned improvements for the AgentFlipper project, pr
 ## 7. Allow executing natural english scripts
 
 ## 8. Come up with end to end testing
+
+## 9. Bad vibe code that hardcodes responses to LLM output
+
+For example, from llm_response_parser.py:
+```
+# Look for phrases indicating the main goal was achieved
+completion_indicators = [
+    "primary goal was accomplished",
+    "main objective was achieved",
+    "core task was completed",
+    "successfully turned on and off",
+    "overall task was completed"
+]
+```
+This doesn't need to be hardcoded because what the LLM spits out can be highly variable. Figuring out natural language shouldn't be hardcoded, LLM's should be used to make these sorts of decisions.
+
+I found little mistakes like this buried a lot throughout the project. Need to instruct the LLM to not do this, and fix them.

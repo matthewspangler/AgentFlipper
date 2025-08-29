@@ -7,4 +7,4 @@ This directory contains files related to the planning, architecture, and AI-driv
 *   **ARCHITECTURE.md**: The software architecture and technical design of the agent.
 *   **PLANS.md**: High-level development plans and feature roadmaps.
 *   **TODO.md**: A detailed list of development tasks and their current status.
-*   **prompts/**: A subdirectory for storing and managing the prompt templates used by the AI agent.
+*   **prompts/**: A subdirectory for storing and managing the prompt templates used for AI development.
