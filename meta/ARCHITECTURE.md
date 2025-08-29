@@ -194,8 +194,53 @@ The system uses two key shell scripts for setup and execution.
 
 ## TODO
 
-### AgentFlipper Loop Pattern
+### Diagrams
 
+#### High-Level Flow
+```mermaid
+flowchart TD
+    Start([User enters command]) --> Plan[🧠 PLAN<br/>LLM creates action list]
+    Plan --> Act[⚡ ACT<br/>Execute actions]
+    Act --> Reflect[🤔 REFLECT<br/>Check results]
+    Reflect --> Done{Task complete?}
+    Done -->|No| Plan
+    Done -->|Yes| End([Done])
+    
+    style Start fill:#2ed832
+    style End fill:#2ed832
+    style Plan fill:#228cff
+    style Act fill:#ff9722
+    style Reflect fill:#ff9722
+```
+
+#### Detailed Plan-Act-Reflect Loop
+```mermaid
+flowchart TD
+    UserInput[User: Turn on the LED] --> CheckQueue{Task queue empty?}
+    
+    CheckQueue -->|Yes| AskLLM[Ask LLM for plan]
+    CheckQueue -->|No| GetNextTask[Get next task]
+    
+    AskLLM --> LLMPlan[LLM: Here's what to do:<br/>1. led r 255<br/>2. provide_info]
+    LLMPlan --> AddToQueue[Add tasks to queue]
+    AddToQueue --> GetNextTask
+    
+    GetNextTask --> Execute[Execute task:<br/>Send 'led r 255' to Flipper]
+    Execute --> Result[Result: Success/Failure]
+    
+    Result --> AskLLMReflect[Ask LLM: What next?]
+    AskLLMReflect --> LLMDecides{LLM Decision}
+    
+    LLMDecides -->|More tasks needed| AddMoreTasks[Add new tasks]
+    LLMDecides -->|Task complete| Finish[✅ Complete]
+    LLMDecides -->|Need human input| AskHuman[Ask user for help]
+    
+    AddMoreTasks --> CheckQueue
+    AskHuman --> WaitForHuman[Wait for response]
+    WaitForHuman --> CheckQueue
+```
+
+#### Outdated Diagram
 ```mermaid
 graph TD
     B(Receive User Input) --> B1(Add User Input to Task Queue TaskManager.add_user_task)
