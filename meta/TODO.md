@@ -54,3 +54,10 @@ This document outlines the planned improvements for the AgentFlipper project bas
 - [ ] Create mechanisms to restore execution context
 - [ ] Add CLI options for loading previous sessions
 - [ ] Document persistence capabilities and limitations
+
+## 7. Architectural Refinements
+
+- [ ] **Consolidate the Agent Loop**: Refactor `agent_loop.py` and `agent_loop_processor.py` into a single, definitive `AgentLoop` class to eliminate redundancy.
+- [ ] **Enhance Tool Extensibility**: Implement a dynamic tool registration system (e.g., a `tools` directory with a registry) to replace the hardcoded tool list in `llm_agent.py`.
+- [ ] **Refactor the LLM Agent**: Extract the complex response parsing logic from `llm_agent.py` into a separate `LLMResponseParser` class to improve modularity.
+- [ ] **Refine Component Initialization**: Refactor the initialization of UI-dependent components in `main.py` to make dependencies more explicit and avoid reliance on a mutable `app_instance` variable.
