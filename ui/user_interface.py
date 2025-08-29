@@ -327,13 +327,3 @@ class AgentFlipper(App):
         elif options:
             await self.display_message("[#2ed832]Please type your choice (number or text)[/#2ed832]")
 
-
-def run_interactive_loop(
-    agent_loop: AgentLoop,
-    human_interaction_handler: HumanInteractionHandler,
-    flipper_agent: Any,
-    llm_agent: UnifiedLLMAgent
-):
-    """Run the main user interaction loop using Textual."""
-    app = AgentFlipper(agent_loop, human_interaction_handler, flipper_agent, llm_agent)
-    app.run()

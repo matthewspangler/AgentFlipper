@@ -19,9 +19,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 
 from rag import RAGRetriever 
-from agent.agent_loop_processor import process_user_request_unified as process_user_request
 from hardware import establish_flipper_connection, initialize_rag_system, configure_llm_agent
-from ui import Colors, AgentFlipper, run_interactive_loop
+from ui import Colors, AgentFlipper
 from agent import AgentLoop, AgentState, TaskManager, ToolExecutor
 from hardware import HardwareManager, FlipperZeroManager 
 from agent.llm_agent import UnifiedLLMAgent
@@ -247,13 +246,8 @@ def main():
         llm_agent=llm_agent # Pass llm_agent
     )
 
-    # Run the interactive loop which starts the Textual app
-    run_interactive_loop(
-        agent_loop,
-        human_interaction_handler,
-        flipper_agent, # Pass flipper_agent
-        llm_agent # Pass llm_agent
-    )
+    # Run the Textual app
+    app.run()
 
 
 if __name__ == "__main__":
