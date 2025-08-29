@@ -31,7 +31,12 @@ class AgentLoop:
         self.agent_state.update_context("current_goal", user_input)
 
         # Update UI to show initial state (empty task list)
-        await self.app_instance.update_task_list_ui() # Added call here
+        await self.app_instance.update_task_list_ui()
+
+        # Check device connection before proceeding
+        if not self.agent_state.flipper_agent or not self.agent_state.flipper_agent.is_connected:
+            await self.app_instance.display_message("[bold red]ERROR: Flipper Zero not connected.[/bold red]")
+            return
 
         # Start the main loop
         await self._run_main_loop()
